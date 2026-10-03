@@ -36,7 +36,10 @@
   }
   option { background: var(--card); color: var(--text); font-weight: 400; }
   .msg { color: var(--muted); margin-top: 16px; }
-  .msg a, footer a { color: var(--link); }
+  .msg a { color: var(--link); }
+  footer a { color: var(--muted); text-underline-offset: 3px; }
+  footer a:hover, footer a:focus-visible { color: var(--accent); }
+  footer .red { color: #ff4d64; }
   footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
 </style>
 </head>
@@ -50,6 +53,7 @@
     </select>
   </div>
   <p class="msg" id="msg" hidden></p>
+  <footer><a href="https://tools.dombuzz.ch/">→ dombuzz <span class="red">Tools</span></a></footer>
 </main>
 
 <script>
