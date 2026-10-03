@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNlMjQ4M2YiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMiwzMikiPgogICAgPGcgZmlsbD0iI2ZmZmZmZiI+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDApIi8+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICAgICAgPGVsbGlwc2UgY3g9IjAiIGN5PSItMTUiIHJ4PSI1LjUiIHJ5PSIxMyIgdHJhbnNmb3JtPSJyb3RhdGUoMjQwKSIvPgogICAgPC9nPgogICAgPGNpcmNsZSBjeD0iMCIgY3k9IjAiIHI9IjUiIGZpbGw9IiNlMjQ4M2YiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8L2c+Cjwvc3ZnPgo=">
+<title>Baufortschritt — Wärmepumpe &amp; Umbau</title>
+<style>
+  :root{
+    --bg: #07090f;
+    --ink: #b8c8e0;
+    --ink-soft: #4a5d7a;
+    --line: #1c2a40;
+    --confirmed: #f0952a;
+    --confirmed-soft: rgba(240,149,42,0.16);
+    --pending: #f0952a;
+    --pending-soft: rgba(240,149,42,0.10);
+    --card-bg: #0d1220;
+    --card-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 24px 80px;
+  }
+
+  .wrap{ max-width: 1040px; margin: 0 auto; }
+
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  h1{
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-weight: 700;
+    font-size: clamp(26px, 4vw, 36px);
+    line-height: 1.2;
+    margin: 0 0 72px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---- Timeline ---- */
+  .timeline{ position: relative; }
+
+  .track{
+    position: relative;
+    height: 4px;
+    background: var(--line);
+    border-radius: 3px;
+  }
+
+  .track-fill{
+    position: absolute;
+    top: 0; left: 0; height: 100%;
+    background: var(--confirmed);
+    border-radius: 3px;
+  }
+
+  .track-pending{
+    position: absolute;
+    top: 0; height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--pending) 0px, var(--pending) 6px,
+      transparent 6px, transparent 12px
+    );
+  }
+
+  .track-future{
+    position: absolute;
+    top: 0; height: 100%;
+    background: var(--ink-soft);
+    opacity: 0.35;
+  }
+
+  .nodes{
+    position: relative;
+    display: flex;
+    margin-top: -2px;
+  }
+
+  .node{
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .dot{
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 3px solid var(--confirmed);
+    margin-top: -7px;
+    transition: box-shadow 0.15s ease;
+    z-index: 2;
+    position: relative;
+  }
+
+  .node.pending .dot{ border-color: var(--pending); border-style: dashed; }
+  .node.future .dot{ border-color: var(--ink-soft); background: var(--bg); }
+
+  .node:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
+  .node.pending:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
+  .node.future:hover .dot{ box-shadow: 0 0 0 6px rgba(133,137,142,0.18); }
+
+  .label{
+    margin-top: 16px;
+    text-align: left;
+    width: 118px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .label .step-title{
+    font-weight: 600;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .label .step-date{
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status-pill{
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+  .node .status-pill{ background: var(--confirmed-soft); color: var(--confirmed); }
+  .node.pending .status-pill{ background: var(--pending-soft); color: var(--pending); }
+  .node.future .status-pill{ background: rgba(255,255,255,0.07); color: var(--ink-soft); }
+
+  /* ---- Tooltip ---- */
+  .tooltip{
+    position: absolute;
+    top: calc(100% + 22px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 270px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    padding: 16px 18px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+    text-align: left;
+  }
+
+  .node:first-child .tooltip{ left: 0; transform: none; }
+  .node:last-child .tooltip{ left: auto; right: 0; transform: none; }
+
+  .dot, .label{ cursor: pointer; }
+  .node.tooltip-open .tooltip{ opacity: 1; pointer-events: auto; }
+
+  .tooltip::after{
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-bottom-color: var(--card-bg);
+  }
+  .node:first-child .tooltip::after{ left: 20px; transform: none; }
+  .node:last-child .tooltip::after{ left: auto; right: 20px; transform: none; }
+
+  .tooltip-title{
+    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+
+  .tooltip-body{
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+  .tooltip-body b{ color: var(--ink); font-weight: 600; }
+
+  /* ---- Begriffserklärungen (Glossar) ---- */
+  .term{
+    position: relative;
+    display: inline;
+    font-weight: 600;
+    color: var(--ink);
+    border-bottom: 1px dotted var(--ink-soft);
+    cursor: help;
+  }
+
+  .term-def{
+    position: absolute;
+    bottom: calc(100% + 9px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 30;
+    box-shadow: var(--card-shadow);
+  }
+
+  .term-def::after{
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--bg);
+  }
+
+  .term:hover .term-def,
+  .term-def.open{
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---- Mobile: vertikal ---- */
+  @media (max-width: 900px){
+    .track{ display: none; }
+    .nodes{ flex-direction: column; margin-top: 0; }
+    .node{
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      width: 100%;
+      padding: 0 0 34px 0;
+    }
+    .node:not(:last-child)::before{
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 22px;
+      bottom: 0;
+      width: 2px;
+      background: var(--line);
+    }
+    .node:not(.pending):not(.future):not(:last-child)::before{
+      background: var(--confirmed);
+    }
+    .node.pending:not(:last-child)::before{
+      background: repeating-linear-gradient(180deg, var(--pending) 0 4px, transparent 4px 8px);
+    }
+    .node.future:not(:last-child)::before{
+      background: var(--ink-soft);
+      opacity: 0.35;
+    }
+    .dot{ margin-top: 2px; margin-right: 18px; flex-shrink: 0; }
+    .label{ width: auto; margin-top: 0; }
+    .tooltip,
+    .node:first-child .tooltip,
+    .node:last-child .tooltip{
+      position: static;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+      box-shadow: none;
+      background: transparent;
+      flex-basis: 100%;
+      width: calc(100% - 36px);
+      padding: 0;
+      margin: 10px 0 0 36px;
+    }
+    .tooltip::after{ display: none; }
+  }
+
+  .legend{
+    display: flex;
+    gap: 24px;
+    margin-top: 72px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .legend-item{ display: flex; align-items: center; gap: 8px; }
+  .legend-swatch{ width: 18px; height: 3px; border-radius: 2px; }
+  .legend-swatch.confirmed{ background: var(--confirmed); }
+  .legend-swatch.pending{ background: repeating-linear-gradient(90deg, var(--pending) 0 4px, transparent 4px 8px); }
+  .legend-swatch.future{ background: var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Baufortschritt · Bauentscheid Nr. 2026-0196</div>
+  <h1>Wärmepumpe &amp; Umbau — Bau läuft</h1>
+
+  <div class="timeline">
+    <div class="track">
+      <div class="track-fill" style="width: 35%"></div>
+      <div class="track-pending" style="left: 35%; width: 30%"></div>
+      <div class="track-future" style="left: 65%; width: 35%"></div>
+    </div>
+
+    <div class="nodes">
+
+      <div class="node">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Baubewilligung</span>
+          <span class="step-date">01.09.2026</span>
+          <span class="status-pill">Erteilt</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Baubewilligung erteilt</p>
+          <p class="tooltip-body">Bauentscheid Nr. 2026-0196 der Stadt Chur vom <b>1. September 2026</b>. Es gingen <b>keine Einsprachen</b> ein, das Tiefbauamt hatte keine Einwände.</p>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Baubeginn</span>
+          <span class="step-date">ca. 24.09.2026</span>
+          <span class="status-pill">Gestartet</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Bauarbeiten gestartet</p>
+          <p class="tooltip-body">Die Bauarbeiten haben ca. am <b>24. September 2026</b> begonnen.</p>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Hydraulik &amp; Spülung</span>
+          <span class="step-date">abgeschlossen</span>
+          <span class="status-pill">Erledigt</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Hydraulik fertig, System gespült</p>
+          <p class="tooltip-body">Die <span class="term">hydraulischen Montagearbeiten<span class="term-def">Verlegen und Anschliessen der wasserführenden Leitungen des Heizsystems, über die später die Wärme verteilt wird.</span></span> sind abgeschlossen, das Heizsystem wurde gründlich <span class="term">gespült<span class="term-def">Das Rohrsystem wird mit Wasser durchgespült, um Luft, Schmutz und Rückstände aus den Leitungen zu entfernen.</span></span>. <b>Provisorium:</b> Die alte Ölheizung ist abgekoppelt, Wärme und Warmwasser laufen aktuell zuverlässig über den <span class="term">integrierten Elektroheizeinsatz<span class="term-def">Ein elektrisches Heizelement in der Wärmepumpe, das übergangsweise die Wärmeerzeugung übernimmt, bis diese offiziell in Betrieb ist.</span></span>.</p>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Türausschnitt Heizraum</span>
+          <span class="step-date">abgeschlossen</span>
+          <span class="status-pill">Erledigt</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Wanddurchbruch Heizraum</p>
+          <p class="tooltip-body">Der Türausschnitt zum Heizraum wurde im <span class="term">Nassschneideverfahren<span class="term-def">Beim Schneiden/Bohren wird laufend Wasser zugeführt. Das bindet den entstehenden Staub und kühlt das Werkzeug.</span></span> ausgeführt, um starke Staubentwicklung in der Garage zu vermeiden. Etwas Wasser gelangte dabei auf den Boden, der Bereich wurde anschliessend gereinigt.</p>
+        </div>
+      </div>
+
+      <div class="node pending">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Lüftungsgitter</span>
+          <span class="step-date">vor dem Verputz</span>
+          <span class="status-pill">Geplant</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Kernbohrung für Luftaustausch</p>
+          <p class="tooltip-body">Auf Wunsch wird ein <b>Lüftungsgitter</b> eingebaut (<span class="term">Kernbohrung<span class="term-def">Ein präzises, rundes Loch, das mit einer speziellen Bohrkrone in die Wand gebohrt wird, z.B. für Leitungen oder Lüftungsgitter.</span></span> Ø ca. <b>125 mm</b>). Dies erfolgt noch, solange die Wand <b>nicht fertig verputzt</b> ist.</p>
+        </div>
+      </div>
+
+      <div class="node pending">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Abdichtung Terrasse</span>
+          <span class="step-date">Termin offen</span>
+          <span class="status-pill">Termin offen</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Spengler / Abdichter</p>
+          <p class="tooltip-body">Der Spengler/Abdichter schaut sich die Situation vor Ort an und plant die fachgerechte Abdichtung. Der genaue Termin ist noch offen. Die betroffene Stelle auf der Terrasse <b>vorher abdecken</b>.</p>
+        </div>
+      </div>
+
+      <div class="node pending">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Maurerarbeiten</span>
+          <span class="step-date">voraussichtl. nächste Woche</span>
+          <span class="status-pill">Termin folgt</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Türleibung, Abdichtung, Aussenputz</p>
+          <p class="tooltip-body">Genauer Besichtigungstermin steht noch aus, voraussichtlich <b>Anfang nächster Woche</b>. Der Maurer drückt die <span class="term">Türleibung<span class="term-def">Die seitliche Wandfläche einer Tür- oder Fensteröffnung, sichtbar zwischen Rahmen und Wandoberfläche.</span></span> mit <span class="term">Zementmörtel<span class="term-def">Gemisch aus Zement, Sand und Wasser, das zum Verputzen, Verfugen oder Ausbessern von Mauerwerk dient.</span></span> bei, arbeitet die <span class="term">Bitumenbahn<span class="term-def">Eine wasserdichte Bahn aus Bitumen, die Wände, Dächer oder Durchbrüche gegen eindringende Feuchtigkeit abdichtet.</span></span> an und stellt den <span class="term">Aussenputz<span class="term-def">Die abschliessende Putzschicht auf der Fassade, die Wand und Dämmung vor Witterung schützt.</span></span> fertig.</p>
+        </div>
+      </div>
+
+      <div class="node future">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Elektro &amp; Inbetriebnahme</span>
+          <span class="step-date">nach Elektroanschluss</span>
+          <span class="status-pill">Ausstehend</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Elektro und Inbetriebnahme</p>
+          <p class="tooltip-body">Sobald der <b>elektrische Anschluss</b> fertig ist, erfolgt die offizielle Inbetriebnahme der Wärmepumpe. Erst wenn diese <b>einwandfrei läuft</b>, wird die alte Ölheizung demontiert.</p>
+        </div>
+      </div>
+
+      <div class="node future">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Rohrisolation</span>
+          <span class="step-date">nach Inbetriebnahme</span>
+          <span class="status-pill">Ausstehend</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Dämmung der Rohrleitungen</p>
+          <p class="tooltip-body">Die neuen Rohrleitungen werden fachgerecht gedämmt, sobald die Wärmepumpe in Betrieb genommen wurde.</p>
+        </div>
+      </div>
+
+      <div class="node future">
+        <div class="dot"></div>
+        <div class="label">
+          <span class="step-title">Entsorgung Öltank</span>
+          <span class="step-date">nach Demontage</span>
+          <span class="status-pill">Ausstehend</span>
+        </div>
+        <div class="tooltip">
+          <p class="tooltip-title">Heizöltransport &amp; Tankentsorgung</p>
+          <p class="tooltip-body">Bei einer Restmenge von ca. <b>600–800 Litern</b> ist der Abtransport im Rahmen der Tankdemontage inbegriffen: Das saubere Heizöl wird abgesaugt, per Tankwagen <b>nach Chur</b> transportiert, danach wird der Tank zerschnitten. Der <span class="term">Bodensatz (Ölschlamm)<span class="term-def">Verunreinigte, eingedickte Rückstände am Tankboden, die sich über die Jahre absetzen und aus Qualitätsgründen separat entsorgt werden müssen.</span></span> wird separat entsorgt.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch confirmed"></span> Erledigt</div>
+    <div class="legend-item"><span class="legend-swatch pending"></span> Läuft / in Planung</div>
+    <div class="legend-item"><span class="legend-swatch future"></span> Noch offen</div>
+  </div>
+
+</div>
+<script>
+  document.addEventListener('click', function (e) {
+    // Begriffserklärungen (Glossar): Klick zum Ein-/Ausblenden
+    var term = e.target.closest('.term');
+    var openDefs = document.querySelectorAll('.term-def.open');
+    openDefs.forEach(function (def) {
+      if (!term || def !== term.querySelector('.term-def')) {
+        def.classList.remove('open');
+      }
+    });
+    if (term) {
+      var def = term.querySelector('.term-def');
+      if (def) def.classList.toggle('open');
+    }
+
+    // Infoboxen (Tooltips): Klick auf Punkt/Label zum Ein-/Ausblenden
+    var insideTooltip = e.target.closest('.tooltip');
+    var clickedTrigger = e.target.closest('.dot, .label');
+    var clickedNode = e.target.closest('.node');
+
+    if (clickedTrigger && !insideTooltip) {
+      var wasOpen = clickedNode.classList.contains('tooltip-open');
+      document.querySelectorAll('.node.tooltip-open').forEach(function (n) {
+        n.classList.remove('tooltip-open');
+      });
+      if (!wasOpen) clickedNode.classList.add('tooltip-open');
+    } else if (!insideTooltip) {
+      document.querySelectorAll('.node.tooltip-open').forEach(function (n) {
+        n.classList.remove('tooltip-open');
+      });
+    }
+  });
+</script>
+</body>
+</html>

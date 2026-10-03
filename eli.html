@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Eli</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23ff4d64'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23fff'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M50 16v8M50 76v8M16 50h8M76 50h8M26 26l6 6M68 68l6 6M74 26l-6 6M32 68l-6 6'/%3E%3C/g%3E%3C/svg%3E">
+
+  <style>
+    :root { --bg: #07090f; --text: #ffffff; --accent: #f0952a; --accent2: #ffd166; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0px;
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      color: var(--text);
+      background: radial-gradient(900px 600px at 20% 10%, rgba(240,149,42,.18), transparent 55%),
+                  radial-gradient(900px 600px at 80% 20%, rgba(255,209,102,.12), transparent 55%),
+                  linear-gradient(180deg, var(--bg), var(--bg));
+      display: grid; place-items: center; padding: 32px 16px;
+    }
+    .wrap { text-align: center; }
+    .sun { font-size: 48px; margin-bottom: 24px; }
+    .entry { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin: 10px 0px; white-space: nowrap; }
+    .value { opacity: 1; }
+    .unit { font-weight: 600; margin-left: 8px; opacity: 0.75; }
+    .hidden { display: none; }
+    @media (max-width: 480px) {
+      .entry { font-size: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap" aria-label="Zeit seit dem 7. November 2025">
+    <div class="sun">☀️</div>
+
+    <div class="entry hidden" id="row-years"><span class="value" id="years">0</span><span class="unit" id="unit-years">Jahre</span></div>
+    <div class="entry" id="row-months"><span class="value" id="months">0</span><span class="unit" id="unit-months">Monate</span></div>
+    <div class="entry" id="row-weeks"><span class="value" id="weeks">0</span><span class="unit" id="unit-weeks">Wochen</span></div>
+    <div class="entry" id="row-days"><span class="value" id="days">0</span><span class="unit" id="unit-days">Tage</span></div>
+  </main>
+
+  <script>
+    // Startdatum (Jahr, Monat 1–12, Tag)
+    const START = { y: 2025, m: 11, d: 7 };
+
+    const UNITS = {
+      years:  ['Jahr', 'Jahre'],
+      months: ['Monat', 'Monate'],
+      weeks:  ['Woche', 'Wochen'],
+      days:   ['Tag', 'Tage']
+    };
+
+    const daysInMonth = (y, m) => new Date(y, m, 0).getDate(); // m = 1–12
+
+    function diff(now) {
+      let y = now.getFullYear() - START.y;
+      let m = (now.getMonth() + 1) - START.m;
+      let d = now.getDate() - START.d;
+      if (d < 0) {
+        m -= 1;
+        // Tage des Vormonats (bezogen auf "heute") dazuzählen
+        const pm = now.getMonth() === 0 ? 12 : now.getMonth();
+        const py = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+        d += daysInMonth(py, pm);
+      }
+      if (m < 0) { y -= 1; m += 12; }
+      if (y < 0) return { years: 0, months: 0, weeks: 0, days: 0 };
+      return { years: y, months: m, weeks: Math.floor(d / 7), days: d % 7 };
+    }
+
+    function render() {
+      const v = diff(new Date());
+      for (const k of Object.keys(UNITS)) {
+        document.getElementById(k).textContent = v[k];
+        document.getElementById('unit-' + k).textContent = UNITS[k][v[k] === 1 ? 0 : 1];
+      }
+      document.getElementById('row-years').classList.toggle('hidden', v.years === 0);
+    }
+
+    render();
+    // Kurz nach Mitternacht automatisch aktualisieren
+    function scheduleMidnight() {
+      const n = new Date();
+      const next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 5);
+      setTimeout(() => { render(); scheduleMidnight(); }, next - n);
+    }
+    scheduleMidnight();
+  </script>
+</body>
+</html>
