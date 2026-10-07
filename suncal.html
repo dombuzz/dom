@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>☀ Sonnenkalender · Geländeverschattung</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23ff4d64'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23fff'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M50 16v8M50 76v8M16 50h8M76 50h8M26 26l6 6M68 68l6 6M74 26l-6 6M32 68l-6 6'/%3E%3C/g%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -13,7 +13,7 @@
   --bg:#07090f;--surf:#0d1220;--surf2:#131b2e;--b0:#1c2a40;
   --text:#b8c8e0;--muted:#4a5d7a;--dim:#1a2a40;
   --acc:#f0952a;--acc2:#ffd166;
-  --fd:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--fm:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --fd:'Nunito',system-ui,sans-serif;--fm:'Nunito',system-ui,sans-serif;
 }
 html,body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:14px;min-height:100vh;overflow-x:hidden}
 
@@ -256,7 +256,7 @@ const WDAYS=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Sa
 const MCOLS=['#5070c8','#6090d0','#50b0c0','#70c060','#b8b828','#e89018','#e07018','#d08028','#b07038','#885028','#606088','#4850a0'];
 const AZS=Array.from({length:36},(_,i)=>i*10);   // every 10° → 36 directions (getHz interpolates)
 const DISTS=[0.4,0.8,1.5,2.5,4,6.5,10,16,24,34]; // 10 bands → global fallback (36×10=360 pts)
-const STEP=2;
+const STEP=1;
 let YD=null,HZ=null,ARCS=null,TZ=null,LON_CACHE=0,LAT_CACHE=0,YEAR=null,HZ_STEP=10,LOC_NAME='',SELECTED_DATE=null;
 
 /* ── INIT ──────────────────────────────────────────────────── */
@@ -339,6 +339,14 @@ function sunPos(date,lat,lon){
   let az=r2d(Math.acos(Math.max(-1,Math.min(1,cosZ))));
   if(Math.sin(HA)>0)az=360-az;
   return{alt,az}
+}
+
+// Atmosphärische Refraktion (Saemundsson 1986), in Grad. Hebt die scheinbare
+// Sonnenposition nahe dem Horizont an (~34' bei 0°, ~5' bei 10°, ~2.5' bei 20°).
+function refractionDeg(h){
+  const hc=Math.max(h,-1);
+  const Rarcmin=1.02/Math.tan(d2r(hc+10.3/(hc+5.11)));
+  return Rarcmin/60;
 }
 
 /* ── GEOCODING ──────────────────────────────────────────────── */
@@ -453,7 +461,8 @@ function calcYear(lat,lon,year,ha){
     let rise=null,set=null,sm=0,ar=null,as2=null,ad=0,mx=-90,pv=false,pa=false;
     for(let s=0;s<=spd;s++){
       const dt=new Date(base+s*STEP*60000),p=sunPos(dt,lat,lon);
-      const hz=getHz(p.az,ha),vis=p.alt>hz&&p.alt>-0.3,astr=p.alt>-0.3;
+      const appAlt=p.alt+refractionDeg(p.alt);
+      const hz=getHz(p.az,ha),vis=appAlt>hz&&p.alt>-1,astr=p.alt>-0.833;
       if(p.alt>mx)mx=p.alt;if(vis)sm+=STEP;if(astr)ad+=STEP;
       if(!pv&&vis&&rise==null)rise=s*STEP;if(pv&&!vis)set=s*STEP;
       if(!pa&&astr&&ar==null)ar=s*STEP;if(pa&&!astr)as2=s*STEP;
@@ -485,11 +494,11 @@ function renderSol(cv,lat,lon,year,ha){
     const base=Date.UTC(year,0,1+d,0,0,0)-Math.round(offH*3600000);
     for(let y=0;y<H;y++){
       const min=(y/H)*1440,dt=new Date(base+min*60000),p=sunPos(dt,lat,lon);
-      const hz=getHz(p.az,ha);let r,g,b;
+      const hz=getHz(p.az,ha),appAlt=p.alt+refractionDeg(p.alt);let r,g,b;
       if(p.alt<-12){r=4;g=6;b=15}
       else if(p.alt<-6){const t=(p.alt+12)/6;[r,g,b]=lc(4,6,15,10,16,36,t)}
       else if(p.alt<0){const t=(p.alt+6)/6;[r,g,b]=lc(10,16,36,20,32,56,t)}
-      else if(p.alt<=hz){r=25;g=55;b=95}
+      else if(appAlt<=hz){r=25;g=55;b=95}
       else{const t=Math.min(1,p.alt/50);[r,g,b]=lc(200,80,16,255,230,60,t)}
       sp(d*2,y,r,g,b);sp(d*2+1,y,r,g,b);
     }
@@ -510,7 +519,7 @@ function renderSol(cv,lat,lon,year,ha){
     ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(tx,0);ctx.lineTo(tx,H);ctx.stroke();
     const lbl=`${today.getDate()}. ${MONTHS[today.getMonth()]}`;
-    ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='600 10px system-ui,sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='600 10px Nunito,sans-serif';
     ctx.textAlign=tx>W*.55?'right':'left';
     ctx.fillText(lbl,tx+(tx>W*.55?-5:5),13);
   }
@@ -531,7 +540,7 @@ function renderSP(cv,arcs,ha){
   for(let az=0;az<=360;az++)ctx.lineTo(x4(az),y4(getHz(az,ha)));
   ctx.lineTo(P.l+pw,P.t+ph);ctx.closePath();ctx.fillStyle='#0b1520';ctx.fill();
   // el grid
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   [0,10,20,30,40,50,60].forEach(el=>{
     const y=y4(el);ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -548,7 +557,7 @@ function renderSP(cv,arcs,ha){
   ctx.beginPath();for(let az=0;az<=360;az++){az===0?ctx.moveTo(x4(0),y4(getHz(0,ha))):ctx.lineTo(x4(az),y4(getHz(az,ha)))}
   ctx.strokeStyle='#f0952a';ctx.lineWidth=1.8;ctx.stroke();
   // horizon fill label
-  ctx.fillStyle='rgba(240,149,42,.35)';ctx.font='8px system-ui,sans-serif';ctx.textAlign='left';
+  ctx.fillStyle='rgba(240,149,42,.35)';ctx.font='8px Nunito,sans-serif';ctx.textAlign='left';
   ctx.fillText('GELÄNDE',P.l+4,y4(-3));
   // equatorial zero line
   ctx.strokeStyle='rgba(80,140,200,.2)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
@@ -570,7 +579,7 @@ function renderSP(cv,arcs,ha){
     // label at zenith
     const pk=pts.reduce((a,b)=>a.alt>b.alt?a:b);
     if(pk.alt>ELN+8&&pk.alt<ELX-3){
-      ctx.fillStyle=MCOLS[m];ctx.font='bold 9px system-ui,sans-serif';ctx.textAlign='center';
+      ctx.fillStyle=MCOLS[m];ctx.font='bold 9px Nunito,sans-serif';ctx.textAlign='center';
       ctx.fillText(MONTHS[m],x4(pk.az),y4(pk.alt)-6);
     }
   });
@@ -588,7 +597,7 @@ function renderHorizonPolar(cv,ha,arcs){
   [10,20,30,40,50].forEach(el=>{
     const r=mR*(1-el/55);ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;
     ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.stroke();
-    ctx.fillStyle='rgba(180,200,224,.2)';ctx.font='8px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';
+    ctx.fillStyle='rgba(180,200,224,.2)';ctx.font='8px Nunito,sans-serif';ctx.textAlign='left';ctx.textBaseline='top';
     ctx.fillText(`${el}°`,cx+2,cy-r+1);
   });
   ctx.textBaseline='alphabetic';
@@ -624,11 +633,11 @@ function renderHorizonPolar(cv,ha,arcs){
   // compass
   ctx.textAlign='center';ctx.textBaseline='middle';
   [['N',0],['O',90],['S',180],['W',270]].forEach(([l,az])=>{
-    const r=mR+13;ctx.fillStyle='#b8c8e0';ctx.font='bold 9px system-ui,sans-serif';
+    const r=mR+13;ctx.fillStyle='#b8c8e0';ctx.font='bold 9px Nunito,sans-serif';
     ctx.fillText(l,cx+r*Math.sin(d2r(az)),cy-r*Math.cos(d2r(az)));
   });
   [['NO',45],['SO',135],['SW',225],['NW',315]].forEach(([l,az])=>{
-    const r=mR+12;ctx.fillStyle='#4a5d7a';ctx.font='8px system-ui,sans-serif';
+    const r=mR+12;ctx.fillStyle='#4a5d7a';ctx.font='8px Nunito,sans-serif';
     ctx.fillText(l,cx+r*Math.sin(d2r(az)),cy-r*Math.cos(d2r(az)));
   });
   ctx.textBaseline='alphabetic';
@@ -658,7 +667,7 @@ function renderSolAz(cv,lat,lon,year,ha,isSummer){
   // compass
   ctx.textAlign='center';ctx.textBaseline='middle';
   [['N',0],['S',180],['O',90],['W',270]].forEach(([l,az])=>{
-    ctx.fillStyle='#4a5d7a';ctx.font='7px system-ui,sans-serif';
+    ctx.fillStyle='#4a5d7a';ctx.font='7px Nunito,sans-serif';
     ctx.fillText(l,cx+(mR+8)*Math.sin(d2r(az)),cy-(mR+8)*Math.cos(d2r(az)));
   });
   ctx.textBaseline='alphabetic';
@@ -683,7 +692,7 @@ function renderRS(cv,yd){
     }
   }
   // grid
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   for(let h=0;h<=24;h+=3){
     const y=y4(h*60);ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -711,7 +720,7 @@ function renderDur(cv,yd){
   ctx.beginPath();yd.forEach((d,i)=>{const x=P.l+((i+.5)/nD)*pw,y=y4(d.dur);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
   ctx.strokeStyle='#e89018';ctx.lineWidth=1.5;ctx.stroke();
   // grid
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   [0,4,8,12,16].forEach(h=>{
     const y=y4(h*60);ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -735,7 +744,7 @@ function renderPct(cv,yd){
   ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
   [0,25,50,75,100].forEach(p=>{
     const y=P.t+ph*(1-p/100);ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
-    ctx.fillStyle='#4a5d7a';ctx.font='9px system-ui,sans-serif';ctx.textAlign='right';
+    ctx.fillStyle='#4a5d7a';ctx.font='9px Nunito,sans-serif';ctx.textAlign='right';
     ctx.fillText(`${p}%`,P.l-4,y+3);
   });
   renderMonthLines(ctx,P,pw,ph,nD,true);
@@ -744,7 +753,7 @@ function renderPct(cv,yd){
 function renderMonthLines(ctx,P,pw,ph,nD,labels){
   const ms=[0,31,59,90,120,151,181,212,243,273,304,334];
   const me=[31,59,90,120,151,181,212,243,273,304,334,nD];
-  ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;ctx.font='9px system-ui,sans-serif';
+  ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;ctx.font='9px Nunito,sans-serif';
   ms.forEach((d,i)=>{
     const x=P.l+(d/nD)*pw;ctx.beginPath();ctx.moveTo(x,P.t);ctx.lineTo(x,P.t+ph);ctx.stroke();
     if(labels){const cx2=P.l+((ms[i]+me[i])/2/nD)*pw;ctx.fillStyle='#4a5d7a';ctx.textAlign='center';ctx.fillText(MONTHS[i],cx2,P.t+ph+16)}
@@ -1008,7 +1017,7 @@ function printSolLight(lat,lon,year,ha){
     ctx.strokeStyle='rgba(20,30,45,.75)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(tx,0);ctx.lineTo(tx,H);ctx.stroke();
     const lbl=`${today.getDate()}. ${MONTHS[today.getMonth()]}`;
-    ctx.fillStyle='rgba(20,30,45,.85)';ctx.font='600 10px system-ui,sans-serif';
+    ctx.fillStyle='rgba(20,30,45,.85)';ctx.font='600 10px Nunito,sans-serif';
     ctx.textAlign=tx>W*.55?'right':'left';
     ctx.fillText(lbl,tx+(tx>W*.55?-5:5),13);
   }
@@ -1028,7 +1037,7 @@ function printSPLight(arcs,ha){
   ctx.beginPath();ctx.moveTo(P.l,P.t+ph);
   for(let az=0;az<=360;az++)ctx.lineTo(x4(az),y4(getHz(az,ha)));
   ctx.lineTo(P.l+pw,P.t+ph);ctx.closePath();ctx.fillStyle='#e8e1d0';ctx.fill();
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   [0,10,20,30,40,50,60].forEach(el=>{
     const y=y4(el);ctx.strokeStyle='rgba(0,0,0,.08)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -1042,7 +1051,7 @@ function printSPLight(arcs,ha){
   });
   ctx.beginPath();for(let az=0;az<=360;az++){az===0?ctx.moveTo(x4(0),y4(getHz(0,ha))):ctx.lineTo(x4(az),y4(getHz(az,ha)))}
   ctx.strokeStyle='#e08018';ctx.lineWidth=1.8;ctx.stroke();
-  ctx.fillStyle='rgba(200,110,10,.55)';ctx.font='8px system-ui,sans-serif';ctx.textAlign='left';
+  ctx.fillStyle='rgba(200,110,10,.55)';ctx.font='8px Nunito,sans-serif';ctx.textAlign='left';
   ctx.fillText('GELÄNDE',P.l+4,y4(-3));
   ctx.strokeStyle='rgba(60,110,180,.35)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
   ctx.beginPath();ctx.moveTo(P.l,y4(0));ctx.lineTo(P.l+pw,y4(0));ctx.stroke();
@@ -1062,7 +1071,7 @@ function printSPLight(arcs,ha){
     ctx.strokeStyle=MCOLS_L[m];ctx.lineWidth=1.5;ctx.stroke();
     const pk=pts.reduce((a,b)=>a.alt>b.alt?a:b);
     if(pk.alt>ELN+8&&pk.alt<ELX-3){
-      ctx.fillStyle=MCOLS_L[m];ctx.font='bold 9px system-ui,sans-serif';ctx.textAlign='center';
+      ctx.fillStyle=MCOLS_L[m];ctx.font='bold 9px Nunito,sans-serif';ctx.textAlign='center';
       ctx.fillText(MONTHS[m],x4(pk.az),y4(pk.alt)-6);
     }
   });
@@ -1072,7 +1081,7 @@ function printSPLight(arcs,ha){
 function renderMonthLinesLight(ctx,P,pw,ph,nD,labels){
   const ms=[0,31,59,90,120,151,181,212,243,273,304,334];
   const me=[31,59,90,120,151,181,212,243,273,304,334,nD];
-  ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=1;ctx.font='9px system-ui,sans-serif';
+  ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=1;ctx.font='9px Nunito,sans-serif';
   ms.forEach((d,i)=>{
     const x=P.l+(d/nD)*pw;ctx.beginPath();ctx.moveTo(x,P.t);ctx.lineTo(x,P.t+ph);ctx.stroke();
     if(labels){const cx2=P.l+((ms[i]+me[i])/2/nD)*pw;ctx.fillStyle='#5a6b85';ctx.textAlign='center';ctx.fillText(MONTHS[i],cx2,P.t+ph+16)}
@@ -1094,7 +1103,7 @@ function printRSLight(yd){
       if(day.set!=null&&day.as2!=null&&day.as2>day.set){ctx.fillStyle='#2f5f95';ctx.fillRect(x,y4(day.set),w2,y4(day.as2)-y4(day.set))}
     }
   }
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   for(let h=0;h<=24;h+=3){
     const y=y4(h*60);ctx.strokeStyle='rgba(0,0,0,.08)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -1121,7 +1130,7 @@ function printDurLight(yd){
   ctx.fillStyle=ag;ctx.fill();
   ctx.beginPath();yd.forEach((d,i)=>{const x=P.l+((i+.5)/nD)*pw,y=y4(d.dur);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
   ctx.strokeStyle='#d47c10';ctx.lineWidth=1.5;ctx.stroke();
-  ctx.font='9px system-ui,sans-serif';
+  ctx.font='9px Nunito,sans-serif';
   [0,4,8,12,16].forEach(h=>{
     const y=y4(h*60);ctx.strokeStyle='rgba(0,0,0,.08)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
@@ -1147,7 +1156,7 @@ function printPctLight(yd){
   ctx.strokeStyle='rgba(0,0,0,.08)';ctx.lineWidth=1;
   [0,25,50,75,100].forEach(p=>{
     const y=P.t+ph*(1-p/100);ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(P.l+pw,y);ctx.stroke();
-    ctx.fillStyle='#5a6b85';ctx.font='9px system-ui,sans-serif';ctx.textAlign='right';
+    ctx.fillStyle='#5a6b85';ctx.font='9px Nunito,sans-serif';ctx.textAlign='right';
     ctx.fillText(`${p}%`,P.l-4,y+3);
   });
   renderMonthLinesLight(ctx,P,pw,ph,nD,true);
