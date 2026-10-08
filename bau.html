@@ -5,17 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNlMjQ4M2YiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMiwzMikiPgogICAgPGcgZmlsbD0iI2ZmZmZmZiI+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDApIi8+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICAgICAgPGVsbGlwc2UgY3g9IjAiIGN5PSItMTUiIHJ4PSI1LjUiIHJ5PSIxMyIgdHJhbnNmb3JtPSJyb3RhdGUoMjQwKSIvPgogICAgPC9nPgogICAgPGNpcmNsZSBjeD0iMCIgY3k9IjAiIHI9IjUiIGZpbGw9IiNlMjQ4M2YiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8L2c+Cjwvc3ZnPgo=">
 <title>Baufortschritt — Wärmepumpe &amp; Umbau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #07090f;
-    --ink: #b8c8e0;
-    --ink-soft: #4a5d7a;
-    --line: #1c2a40;
-    --confirmed: #f0952a;
-    --confirmed-soft: rgba(240,149,42,0.16);
-    --pending: #f0952a;
-    --pending-soft: rgba(240,149,42,0.10);
-    --card-bg: #0d1220;
+    --bg: #0b0c0e;
+    --ink: #ededec;
+    --ink-soft: #85898e;
+    --line: #26292d;
+    --confirmed: #e2483f;
+    --confirmed-soft: rgba(226,72,63,0.16);
+    --pending: #e2483f;
+    --pending-soft: rgba(226,72,63,0.10);
+    --card-bg: #151719;
     --card-shadow: 0 16px 40px rgba(0,0,0,0.6);
   }
 
@@ -25,7 +27,7 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     padding: 56px 24px 80px;
   }
@@ -42,7 +44,7 @@
   }
 
   h1{
-    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: clamp(26px, 4vw, 36px);
     line-height: 1.2;
@@ -114,8 +116,8 @@
   .node.pending .dot{ border-color: var(--pending); border-style: dashed; }
   .node.future .dot{ border-color: var(--ink-soft); background: var(--bg); }
 
-  .node:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
-  .node.pending:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
+  .node:hover .dot{ box-shadow: 0 0 0 6px rgba(226,72,63,0.18); }
+  .node.pending:hover .dot{ box-shadow: 0 0 0 6px rgba(226,72,63,0.18); }
   .node.future:hover .dot{ box-shadow: 0 0 0 6px rgba(133,137,142,0.18); }
 
   .label{
@@ -190,7 +192,7 @@
   .node:last-child .tooltip::after{ left: auto; right: 20px; transform: none; }
 
   .tooltip-title{
-    font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 700;
     margin: 0 0 8px;
@@ -325,9 +327,9 @@
 
   <div class="timeline">
     <div class="track">
-      <div class="track-fill" style="width: 35%"></div>
-      <div class="track-pending" style="left: 35%; width: 30%"></div>
-      <div class="track-future" style="left: 65%; width: 35%"></div>
+      <div class="track-fill" style="width: 38.89%"></div>
+      <div class="track-pending" style="left: 38.89%; width: 33.33%"></div>
+      <div class="track-future" style="left: 72.22%; width: 27.78%"></div>
     </div>
 
     <div class="nodes">
@@ -387,19 +389,6 @@
       <div class="node pending">
         <div class="dot"></div>
         <div class="label">
-          <span class="step-title">Lüftungsgitter</span>
-          <span class="step-date">vor dem Verputz</span>
-          <span class="status-pill">Geplant</span>
-        </div>
-        <div class="tooltip">
-          <p class="tooltip-title">Kernbohrung für Luftaustausch</p>
-          <p class="tooltip-body">Auf Wunsch wird ein <b>Lüftungsgitter</b> eingebaut (<span class="term">Kernbohrung<span class="term-def">Ein präzises, rundes Loch, das mit einer speziellen Bohrkrone in die Wand gebohrt wird, z.B. für Leitungen oder Lüftungsgitter.</span></span> Ø ca. <b>125 mm</b>). Dies erfolgt noch, solange die Wand <b>nicht fertig verputzt</b> ist.</p>
-        </div>
-      </div>
-
-      <div class="node pending">
-        <div class="dot"></div>
-        <div class="label">
           <span class="step-title">Abdichtung Terrasse</span>
           <span class="step-date">Termin offen</span>
           <span class="status-pill">Termin offen</span>
@@ -423,16 +412,16 @@
         </div>
       </div>
 
-      <div class="node future">
+      <div class="node pending">
         <div class="dot"></div>
         <div class="label">
           <span class="step-title">Elektro &amp; Inbetriebnahme</span>
-          <span class="step-date">nach Elektroanschluss</span>
-          <span class="status-pill">Ausstehend</span>
+          <span class="step-date">Elektro: Do 15.10.2026</span>
+          <span class="status-pill">Geplant</span>
         </div>
         <div class="tooltip">
           <p class="tooltip-title">Elektro und Inbetriebnahme</p>
-          <p class="tooltip-body">Sobald der <b>elektrische Anschluss</b> fertig ist, erfolgt die offizielle Inbetriebnahme der Wärmepumpe. Erst wenn diese <b>einwandfrei läuft</b>, wird die alte Ölheizung demontiert.</p>
+          <p class="tooltip-body"><b>Do, 15.10.2026:</b> Der Elektriker ist den ganzen Tag vor Ort. Falls nötig, ist <b>Mo, 19.10.2026</b> als Reservetermin eingeplant. Dabei kann es zu einer <b>Stromunterbrechung von ca. 2 Stunden</b> kommen, nach Möglichkeit nicht über Mittag. Die Inbetriebnahme durch Buderus wird für die <b>KW 44</b> (26.10.–01.11.) angefragt, der genaue Termin folgt. Erst wenn die Anlage <b>einwandfrei läuft</b>, wird die alte Ölheizung demontiert.</p>
         </div>
       </div>
 
