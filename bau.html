@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNlMjQ4M2YiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMiwzMikiPgogICAgPGcgZmlsbD0iI2ZmZmZmZiI+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDApIi8+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICAgICAgPGVsbGlwc2UgY3g9IjAiIGN5PSItMTUiIHJ4PSI1LjUiIHJ5PSIxMyIgdHJhbnNmb3JtPSJyb3RhdGUoMjQwKSIvPgogICAgPC9nPgogICAgPGNpcmNsZSBjeD0iMCIgY3k9IjAiIHI9IjUiIGZpbGw9IiNlMjQ4M2YiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8L2c+Cjwvc3ZnPgo=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNmMDk1MmEiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMiwzMikiPgogICAgPGcgZmlsbD0iI2ZmZmZmZiI+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDApIi8+CiAgICAgIDxlbGxpcHNlIGN4PSIwIiBjeT0iLTE1IiByeD0iNS41IiByeT0iMTMiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICAgICAgPGVsbGlwc2UgY3g9IjAiIGN5PSItMTUiIHJ4PSI1LjUiIHJ5PSIxMyIgdHJhbnNmb3JtPSJyb3RhdGUoMjQwKSIvPgogICAgPC9nPgogICAgPGNpcmNsZSBjeD0iMCIgY3k9IjAiIHI9IjUiIGZpbGw9IiNmMDk1MmEiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8L2c+Cjwvc3ZnPgo=">
 <title>Baufortschritt — Wärmepumpe &amp; Umbau</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #0b0c0e;
-    --ink: #ededec;
-    --ink-soft: #85898e;
-    --line: #26292d;
-    --confirmed: #e2483f;
-    --confirmed-soft: rgba(226,72,63,0.16);
-    --pending: #e2483f;
-    --pending-soft: rgba(226,72,63,0.10);
-    --card-bg: #151719;
+    --bg: #07090f;
+    --ink: #e6ecf5;
+    --ink-soft: #7d90b0;
+    --line: #17202f;
+    --confirmed: #f0952a;
+    --confirmed-soft: rgba(240,149,42,0.16);
+    --pending: #f0952a;
+    --pending-soft: rgba(240,149,42,0.10);
+    --card-bg: #0f1522;
     --card-shadow: 0 16px 40px rgba(0,0,0,0.6);
   }
 
@@ -116,9 +116,9 @@
   .node.pending .dot{ border-color: var(--pending); border-style: dashed; }
   .node.future .dot{ border-color: var(--ink-soft); background: var(--bg); }
 
-  .node:hover .dot{ box-shadow: 0 0 0 6px rgba(226,72,63,0.18); }
-  .node.pending:hover .dot{ box-shadow: 0 0 0 6px rgba(226,72,63,0.18); }
-  .node.future:hover .dot{ box-shadow: 0 0 0 6px rgba(133,137,142,0.18); }
+  .node:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
+  .node.pending:hover .dot{ box-shadow: 0 0 0 6px rgba(240,149,42,0.18); }
+  .node.future:hover .dot{ box-shadow: 0 0 0 6px rgba(125,144,176,0.18); }
 
   .label{
     margin-top: 16px;
@@ -153,7 +153,7 @@
   }
   .node .status-pill{ background: var(--confirmed-soft); color: var(--confirmed); }
   .node.pending .status-pill{ background: var(--pending-soft); color: var(--pending); }
-  .node.future .status-pill{ background: rgba(255,255,255,0.07); color: var(--ink-soft); }
+  .node.future .status-pill{ background: rgba(184,200,224,0.08); color: var(--ink-soft); }
 
   /* ---- Tooltip ---- */
   .tooltip{
