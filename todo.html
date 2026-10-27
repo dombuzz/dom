@@ -35,12 +35,12 @@
     background: var(--accent); border: 0; border-radius: 12px; cursor: pointer;
   }
   ul { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-  li { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border-top: 1px solid var(--line); }
+  li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 6px 6px 14px; border-top: 1px solid var(--line); }
   li:first-child { border-top: 0; }
   input[type=checkbox] {
     appearance: none; -webkit-appearance: none; flex: none; width: 22px; height: 22px; margin: 0;
     border: 2px solid var(--muted); border-radius: 6px; background: transparent;
-    display: grid; place-content: center; cursor: pointer;
+    display: grid; place-content: center; cursor: pointer; margin-top: 9px;
   }
   input[type=checkbox]:hover { border-color: var(--accent); }
   input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
@@ -51,12 +51,13 @@
   .txt {
     flex: 1; min-width: 0; font: inherit; color: var(--text); background: transparent;
     border: 0; padding: 8px 6px; border-radius: 8px; outline: none;
+    resize: none; overflow: hidden; display: block; line-height: 1.5; overflow-wrap: anywhere;
   }
   .txt:focus { background: var(--field); }
   li.done .txt { color: var(--done); text-decoration: line-through; }
   .del {
     flex: none; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent;
-    color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
+    color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; margin-top: 2px;
   }
   .del:hover, .del:focus-visible { color: var(--accent); background: var(--field); }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -130,9 +131,11 @@
       cb.type = 'checkbox'; cb.checked = it.done; cb.setAttribute('aria-label', 'Erledigt');
       cb.addEventListener('change', () => { it.done = cb.checked; save(); render(); });
 
-      const tx = document.createElement('input');
-      tx.type = 'text'; tx.className = 'txt'; tx.value = it.text; tx.setAttribute('aria-label', 'Aufgabe bearbeiten');
-      tx.addEventListener('keydown', e => { if (e.key === 'Enter') tx.blur(); });
+      // Mehrzeiliges Feld, wächst mit dem Text. Enter speichert, Shift+Enter = neue Zeile.
+      const tx = document.createElement('textarea');
+      tx.className = 'txt'; tx.rows = 1; tx.value = it.text; tx.setAttribute('aria-label', 'Aufgabe bearbeiten');
+      tx.addEventListener('input', () => grow(tx));
+      tx.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); tx.blur(); } });
       tx.addEventListener('change', () => {
         const v = tx.value.trim();
         if (!v) return remove(it);
@@ -146,7 +149,11 @@
       li.append(cb, tx, del);
       list.append(li);
     }
+    list.querySelectorAll('.txt').forEach(grow);
   }
+
+  function grow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+  window.addEventListener('resize', () => list.querySelectorAll('.txt').forEach(grow));
 
   document.getElementById('form').addEventListener('submit', e => {
     e.preventDefault();
