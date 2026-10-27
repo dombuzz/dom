@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>Rauchmelder</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Cpath fill='%2307090f' d='M50 16c4 14 22 22 22 42a22 22 0 0 1-44 0c0-10 6-16 10-20 0 8 4 12 8 12-2-14 4-24 4-34z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #07090f; --card: #0f1522; --text: #e6ecf5; --muted: #7d90b0;
+    --line: #17202f; --accent: #f0952a; --ok: #5fd39a; --bad: #ff4d64; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(900px 600px at 15% 0%, rgba(240,149,42,.14), transparent 55%), var(--bg);
+    min-height: 100vh;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 56px 16px 64px; }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
+  h1 { font-size: clamp(26px, 5vw, 34px); margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sum { margin: 0 0 28px; color: var(--muted); }
+  .sum b { color: var(--ok); font-weight: 600; }
+  .sum.bad b { color: var(--bad); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .m { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .m.bad { border-color: var(--bad); background: linear-gradient(160deg, rgba(255,77,100,.12), var(--card) 60%); }
+  .nm { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 18px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(95,211,154,.15); flex: none; }
+  .m.bad .dot { background: var(--bad); box-shadow: 0 0 0 4px rgba(255,77,100,.18); }
+  .st { margin-top: 4px; color: var(--ok); }
+  .m.bad .st { color: var(--bad); font-weight: 600; }
+  dl { margin: 14px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .warn { color: var(--accent); }
+  .msg { color: var(--muted); }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--muted); text-underline-offset: 3px; }
+  footer a:hover, footer a:focus-visible { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Zuhause</p>
+  <h1>Rauchmelder</h1>
+  <p class="sum" id="sum">Status wird geladen …</p>
+  <div class="grid" id="grid"></div>
+  <footer>
+    <p id="src"></p>
+    <p>Statusanzeige, kein Alarm: Die Melder werden alle 30 Minuten über die X-Sense-Cloud abgefragt. Für Alarme gilt weiterhin die X-Sense-App.</p>
+    <p><a href="/">← dombuzz</a></p>
+  </footer>
+</main>
+<script>
+  const BATT = ['leer', 'schwach', 'gut', 'voll'];
+  const STALE = 13 * 3600;   // die Action schreibt spätestens alle 12 Stunden
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const age = iso => Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  function ago(sec) {
+    if (sec < 90) return 'gerade eben';
+    if (sec < 3600) return `vor ${Math.round(sec / 60)} Min.`;
+    if (sec < 86400) return `vor ${Math.round(sec / 3600)} Std.`;
+    return `vor ${Math.round(sec / 86400)} Tagen`;
+  }
+  const wlan = dbm => dbm == null ? null : dbm >= -60 ? 'gut' : dbm >= -75 ? 'mittel' : 'schwach';
+  function problems(m) {
+    const p = [];
+    if (m.alarm) p.push('Alarm gemeldet');
+    if (m.online === false) p.push('offline');
+    if (m.lebensende) p.push('Lebensende erreicht, ersetzen');
+    if (m.batterie != null && m.batterie <= 1) p.push('Batterie ' + BATT[m.batterie]);
+    return p;
+  }
+
+  async function load() {
+    let d;
+    try {
+      const res = await fetch('fire.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      d = await res.json();
+    } catch (e) {
+      $('sum').innerHTML = `<span class="warn">Status nicht verfügbar (${esc(e.message)}).</span>`;
+      return;
+    }
+    const list = d.melder || [];
+    let bad = 0;
+    $('grid').innerHTML = list.map(m => {
+      const p = problems(m); if (p.length) bad++;
+      const rows = [];
+      if (m.batterie != null) rows.push(['Batterie', BATT[m.batterie] || m.batterie]);
+      const w = wlan(m.wlan); if (w) rows.push(['WLAN', `${w} (${m.wlan} dBm)`]);
+      if (m.zuletzt) rows.push(['Letzte Meldung', ago(age(m.zuletzt))]);
+      return `<article class="m${p.length ? ' bad' : ''}">
+        <div class="nm"><span class="dot"></span>${esc(m.name)}</div>
+        <div class="st">${p.length ? esc(p.join(', ')) : 'bereit'}</div>
+        <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      </article>`;
+    }).join('');
+    const stale = age(d.checked) > STALE, n = list.length;
+    $('sum').className = 'sum' + (bad || stale ? ' bad' : '');
+    $('sum').innerHTML = !n ? 'Keine Melder gefunden.'
+      : bad ? `<b>${bad} von ${n} brauchen Aufmerksamkeit</b>`
+      : stale ? '<b>Status veraltet</b>, die automatische Abfrage läuft offenbar nicht.'
+      : `<b>${n === 1 ? 'Melder bereit' : `Alle ${n} Melder bereit`}</b>`;
+    $('src').textContent = 'Geprüft ' + ago(age(d.checked));
+  }
+  load();
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60e3);
+</script>
+</body>
+</html>
