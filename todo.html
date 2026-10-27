@@ -68,11 +68,32 @@
   footer a { color: var(--muted); text-underline-offset: 3px; }
   footer a:hover, footer a:focus-visible { color: var(--accent); }
   footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
+  .login { display: grid; gap: 12px; }
+  .login .sub { margin: 0 0 4px; }
+  .login .add { padding: 14px 18px; }
+  .login .add:disabled { opacity: .6; cursor: default; }
+  #pw {
+    width: 100%; padding: 14px 16px; font: inherit; color: var(--text);
+    background: var(--field); border: 1px solid var(--line); border-radius: 12px; outline: none;
+  }
+  #pw:hover, #pw:focus { border-color: var(--accent); }
+  #pw::placeholder { color: var(--muted); }
+  .loginmsg { margin: 0; min-height: 1.5em; color: var(--link); font-size: 14px; }
+  .logout { font: inherit; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .logout:hover, .logout:focus-visible { color: var(--accent); }
   @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
 <body>
 <main>
+<form class="login" id="login" hidden>
+  <h1><span>to</span>do</h1>
+  <p class="sub">Bitte anmelden. Das Gerät bleibt eine Woche angemeldet.</p>
+  <input id="pw" type="password" placeholder="Passwort" aria-label="Passwort" autocomplete="current-password" required>
+  <button class="add" id="loginbtn" type="submit">Anmelden</button>
+  <p class="loginmsg" id="loginmsg" role="alert"></p>
+</form>
+<div id="app" hidden>
   <h1><span>to</span>do</h1>
   <p class="sub" id="count">0 von 0 erledigt</p>
   <div class="bar"><i id="progress"></i></div>
@@ -89,31 +110,114 @@
     <button class="clear" id="clear" type="button">Erledigte entfernen</button>
   </div>
 
-  <footer><a href="/">← dombuzz</a></footer>
+  <footer><a href="/">← dombuzz</a> · <button class="logout" id="logout" type="button">Abmelden</button></footer>
+</div>
 </main>
 
 <script>
-  // Die Liste wird im Browser gespeichert (localStorage) – pro Gerät und Browser.
-  const KEY = 'dom-todo';
-  const list = document.getElementById('list');
-  const note = document.getElementById('note');
-  let items = [];
+  // Die Liste liegt beim Cloudflare-Worker «todo» und ist so auf allen Geräten gleich.
+  // Zugang per Passwort; das Gerät merkt sich die Anmeldung 7 Tage lang.
+  const API = 'https://todo.zappa-pfadi.workers.dev/todos';
+  const CACHE = 'dom-todo';           // lokale Kopie, damit die Liste sofort erscheint
+  const AUTH = 'dom-todo-auth';       // { token, at }
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
 
-  try { items = JSON.parse(localStorage.getItem(KEY)) || []; }
-  catch { items = []; }
+  const $ = id => document.getElementById(id);
+  const list = $('list'), note = $('note');
+  let items = [], token = '', timer = null, pending = false;
 
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(items)); note.textContent = 'Gespeichert in diesem Browser'; }
-    catch { note.textContent = 'Speichern nicht möglich (privates Fenster?)'; }
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} }
+  };
+
+  /* ---------- Anmeldung ---------- */
+  async function deriveToken(pw) {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('dom.dombuzz.ch/todo'), iterations: 150000 }, key, 256);
+    return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
+  function showLogin(text = '') {
+    token = ''; store.del(AUTH);
+    $('app').hidden = true; $('login').hidden = false;
+    $('loginmsg').textContent = text; $('pw').focus();
+  }
+  $('login').addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = $('loginmsg'), btn = $('loginbtn');
+    msg.textContent = ''; btn.disabled = true; btn.textContent = 'Prüfe …';
+    try {
+      const t = await deriveToken($('pw').value.trim());
+      const res = await fetch(API, { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
+      if (res.status === 401) { msg.textContent = 'Passwort falsch.'; $('pw').select(); return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      token = t; store.set(AUTH, { token: t, at: Date.now() });
+      $('pw').value = '';
+      unlock(await res.json());
+    } catch {
+      msg.textContent = 'Server nicht erreichbar. Bitte später nochmals versuchen.';
+    } finally { btn.disabled = false; btn.textContent = 'Anmelden'; }
+  });
+  $('logout').addEventListener('click', () => showLogin());
+
+  function unlock(server) {
+    $('login').hidden = true; $('app').hidden = false;
+    items = store.get(CACHE) || [];
+    if (server) apply(server);
+    render();
+  }
+
+  /* ---------- Synchronisation ---------- */
+  function apply(server) {
+    // Erster Start: Server leer, aber lokal schon Aufgaben → hochladen
+    if (!server.updated && !server.items.length && items.length) { queue(); return; }
+    items = server.items; store.set(CACHE, items);
+    setNote('Synchronisiert');
+  }
+  async function pull() {
+    if (!token || pending || document.activeElement?.classList.contains('txt')) return;
+    try {
+      const res = await fetch(API, { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+      if (res.status === 401) return showLogin('Bitte neu anmelden.');
+      if (!res.ok) throw 0;
+      apply(await res.json()); render();
+    } catch { setNote('Offline – zeigt den letzten Stand'); }
+  }
+  function queue() {
+    pending = true; setNote('Speichert …');
+    clearTimeout(timer); timer = setTimeout(push, 600);
+  }
+  async function push() {
+    try {
+      const res = await fetch(API, {
+        method: 'PUT', cache: 'no-store',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      });
+      if (res.status === 401) { pending = false; return showLogin('Bitte neu anmelden.'); }
+      if (!res.ok) throw 0;
+      pending = false; setNote('Synchronisiert');
+    } catch { setNote('Offline – wird später synchronisiert'); }
+  }
+  function save() { store.set(CACHE, items); queue(); }
+  function setNote(t) { note.textContent = t; }
+
+  // Beim Zurückkehren zur Seite und jede Minute neuesten Stand holen
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pending ? push() : pull(); });
+  window.addEventListener('online', () => pending ? push() : pull());
+  setInterval(() => { if (!document.hidden) pending ? push() : pull(); }, 60000);
+
+  /* ---------- Liste ---------- */
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const remove = it => { items = items.filter(x => x !== it); save(); render(); };
 
   function render() {
     const done = items.filter(i => i.done).length;
-    document.getElementById('count').textContent = `${done} von ${items.length} erledigt`;
-    document.getElementById('progress').style.width = (items.length ? done / items.length * 100 : 0) + '%';
-    document.getElementById('clear').disabled = !done;
+    $('count').textContent = `${done} von ${items.length} erledigt`;
+    $('progress').style.width = (items.length ? done / items.length * 100 : 0) + '%';
+    $('clear').disabled = !done;
 
     list.replaceChildren();
     if (!items.length) {
@@ -155,9 +259,9 @@
   function grow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
   window.addEventListener('resize', () => list.querySelectorAll('.txt').forEach(grow));
 
-  document.getElementById('form').addEventListener('submit', e => {
+  $('form').addEventListener('submit', e => {
     e.preventDefault();
-    const inp = document.getElementById('new');
+    const inp = $('new');
     const v = inp.value.trim();
     if (!v) return;
     items.unshift({ id: uid(), text: v, done: false });
@@ -165,11 +269,14 @@
     save(); render(); inp.focus();
   });
 
-  document.getElementById('clear').addEventListener('click', () => {
+  $('clear').addEventListener('click', () => {
     items = items.filter(i => !i.done); save(); render();
   });
 
-  render();
+  /* ---------- Start ---------- */
+  const auth = store.get(AUTH);
+  if (auth && auth.token && Date.now() - auth.at < WEEK) { token = auth.token; unlock(null); pull(); }
+  else showLogin();
 </script>
 </body>
 </html>
