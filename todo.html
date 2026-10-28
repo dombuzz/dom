@@ -66,6 +66,12 @@
   .tools { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 14px; color: var(--muted); }
   .clear { font: inherit; color: var(--link); background: none; border: 0; padding: 4px 0; cursor: pointer; }
   .clear:disabled { color: var(--done); cursor: default; }
+  .donesec { margin-top: 40px; }
+  .donehead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .donehead h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .donehead h2 span { font-variant-numeric: tabular-nums; }
+  .donehead .clear { font-size: 14px; }
+  #donelist { background: transparent; }
   footer a { color: var(--muted); text-underline-offset: 3px; }
   footer a:hover, footer a:focus-visible { color: var(--accent); }
   footer { margin-top: 48px; color: var(--muted); font-size: 13px; }
@@ -108,8 +114,15 @@
 
   <div class="tools">
     <span id="note">Gespeichert in diesem Browser</span>
-    <button class="clear" id="clear" type="button">Erledigte entfernen</button>
   </div>
+
+  <section class="donesec" id="donesec" hidden>
+    <div class="donehead">
+      <h2>Erledigt <span id="donecount"></span></h2>
+      <button class="clear" id="clear" type="button">Alle löschen</button>
+    </div>
+    <ul id="donelist"></ul>
+  </section>
 
   <footer><a href="/">← dombuzz</a> · <button class="logout" id="logout" type="button">Abmelden</button></footer>
 </div>
@@ -214,51 +227,58 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const remove = it => { items = items.filter(x => x !== it); save(); render(); };
 
+  function row(it) {
+    const li = document.createElement('li');
+    if (it.done) li.className = 'done';
+
+    // Abhaken verschiebt nach unten, Haken entfernen holt die Aufgabe zurück
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = it.done;
+    cb.setAttribute('aria-label', it.done ? 'Wieder offen' : 'Erledigt');
+    cb.addEventListener('change', () => { it.done = cb.checked; save(); render(); });
+
+    // Mehrzeiliges Feld, wächst mit dem Text. Enter speichert, Shift+Enter = neue Zeile.
+    const tx = document.createElement('textarea');
+    tx.className = 'txt'; tx.rows = 1; tx.value = it.text; tx.setAttribute('aria-label', 'Aufgabe bearbeiten');
+    tx.addEventListener('input', () => grow(tx));
+    tx.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); tx.blur(); } });
+    tx.addEventListener('change', () => {
+      const v = tx.value.trim();
+      if (!v) return remove(it);
+      it.text = v; save(); render();
+    });
+
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'del'; del.textContent = '×'; del.setAttribute('aria-label', 'Löschen');
+    del.addEventListener('click', () => remove(it));
+
+    li.append(cb, tx, del);
+    return li;
+  }
+
   function render() {
-    const done = items.filter(i => i.done).length;
-    $('count').textContent = `${done} von ${items.length} erledigt`;
-    $('progress').style.width = (items.length ? done / items.length * 100 : 0) + '%';
-    $('clear').disabled = !done;
+    const open = items.filter(i => !i.done), done = items.filter(i => i.done);
+    $('count').textContent = `${done.length} von ${items.length} erledigt`;
+    $('progress').style.width = (items.length ? done.length / items.length * 100 : 0) + '%';
 
     list.replaceChildren();
-    if (!items.length) {
+    if (!open.length) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = 'Keine Aufgaben. Schreib oben die erste hinein.';
-      list.append(li);
-      return;
-    }
-    for (const it of items) {
-      const li = document.createElement('li');
-      if (it.done) li.className = 'done';
-
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.checked = it.done; cb.setAttribute('aria-label', 'Erledigt');
-      cb.addEventListener('change', () => { it.done = cb.checked; save(); render(); });
-
-      // Mehrzeiliges Feld, wächst mit dem Text. Enter speichert, Shift+Enter = neue Zeile.
-      const tx = document.createElement('textarea');
-      tx.className = 'txt'; tx.rows = 1; tx.value = it.text; tx.setAttribute('aria-label', 'Aufgabe bearbeiten');
-      tx.addEventListener('input', () => grow(tx));
-      tx.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); tx.blur(); } });
-      tx.addEventListener('change', () => {
-        const v = tx.value.trim();
-        if (!v) return remove(it);
-        it.text = v; save(); render();
-      });
-
-      const del = document.createElement('button');
-      del.type = 'button'; del.className = 'del'; del.textContent = '×'; del.setAttribute('aria-label', 'Löschen');
-      del.addEventListener('click', () => remove(it));
-
-      li.append(cb, tx, del);
+      li.textContent = items.length ? 'Alles erledigt.' : 'Keine Aufgaben. Schreib oben die erste hinein.';
       list.append(li);
     }
-    list.querySelectorAll('.txt').forEach(grow);
+    open.forEach(it => list.append(row(it)));
+
+    $('donesec').hidden = !done.length;
+    $('donecount').textContent = done.length ? `(${done.length})` : '';
+    $('donelist').replaceChildren(...done.map(row));
+
+    document.querySelectorAll('.txt').forEach(grow);
   }
 
   function grow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-  window.addEventListener('resize', () => list.querySelectorAll('.txt').forEach(grow));
+  window.addEventListener('resize', () => document.querySelectorAll('.txt').forEach(grow));
 
   $('form').addEventListener('submit', e => {
     e.preventDefault();
