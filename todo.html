@@ -102,7 +102,7 @@
 </form>
 <div id="app" hidden>
   <h1><span>to</span>do</h1>
-  <p class="sub" id="count">0 von 0 erledigt</p>
+  <p class="sub" id="count">0 offen, 0 erledigt</p>
   <div class="bar"><i id="progress"></i></div>
 
   <form id="form">
@@ -258,7 +258,7 @@
 
   function render() {
     const open = items.filter(i => !i.done), done = items.filter(i => i.done);
-    $('count').textContent = `${done.length} von ${items.length} erledigt`;
+    $('count').textContent = `${open.length} offen, ${done.length} erledigt`;
     $('progress').style.width = (items.length ? done.length / items.length * 100 : 0) + '%';
 
     list.replaceChildren();
