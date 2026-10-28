@@ -112,7 +112,7 @@
       : bad ? `<b>${bad} von ${n} brauchen Aufmerksamkeit</b>`
       : stale ? '<b>Status veraltet</b>, die automatische Abfrage läuft offenbar nicht.'
       : `<b>${n === 1 ? 'Melder bereit' : `Alle ${n} Melder bereit`}</b>`;
-    $('src').textContent = 'Geprüft ' + ago(age(d.checked));
+    $('src').textContent = 'Letzte Änderung ' + ago(age(d.checked));
   }
   load();
   setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60e3);
