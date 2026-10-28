@@ -10,7 +10,7 @@
 <style>
   :root {
     --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
-    --line: #1c2a40; --accent: #f0952a; --link: #ffd166; --bad: #ff4d64; color-scheme: dark;
+    --line: #1c2a40; --accent: #f0952a; --link: #ffd166; --bad: #ff4d64; --ok: #5fd39a; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
@@ -27,8 +27,10 @@
   .m { padding: 14px 16px; border-top: 1px solid var(--line); }
   .m:first-child { border-top: 0; }
   .nm { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
-  .m.bad .dot { background: var(--bad); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(95,211,154,.15); }
+  .dot.mid { background: var(--link); box-shadow: 0 0 0 3px rgba(255,209,102,.15); }
+  .dot.bad { background: var(--bad); box-shadow: 0 0 0 3px rgba(255,77,100,.18); }
   .st { margin-left: auto; font-weight: 400; color: var(--muted); font-size: 14px; }
   .m.bad .st { color: var(--bad); font-weight: 600; }
   dl { margin: 8px 0 0 19px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 14px; }
@@ -65,6 +67,12 @@
     return `vor ${Math.round(sec / 86400)} Tagen`;
   }
   const wlan = dbm => dbm == null ? null : dbm >= -60 ? 'gut' : dbm >= -75 ? 'mittel' : 'schwach';
+  // Punktfarbe: grün = bereit und Batterie voll, gelb = Batterie gut, rot = Problem, grau = unbekannt
+  function level(m, p) {
+    if (p.length) return ['bad', p.join(', ')];
+    if (m.batterie == null) return ['', 'Batteriestand unbekannt'];
+    return m.batterie >= 3 ? ['ok', 'bereit, Batterie voll'] : ['mid', 'bereit, Batterie ' + BATT[m.batterie]];
+  }
   function problems(m) {
     const p = [];
     if (m.alarm) p.push('Alarm gemeldet');
@@ -87,13 +95,13 @@
     const list = d.melder || [];
     let bad = 0;
     $('grid').innerHTML = list.map(m => {
-      const p = problems(m); if (p.length) bad++;
+      const p = problems(m), lv = level(m, p); if (p.length) bad++;
       const rows = [];
       if (m.batterie != null) rows.push(['Batterie', BATT[m.batterie] || m.batterie]);
       const w = wlan(m.wlan); if (w) rows.push(['WLAN', `${w} (${m.wlan} dBm)`]);
       if (m.zuletzt) rows.push(['Letzte Meldung', ago(age(m.zuletzt))]);
       return `<article class="m${p.length ? ' bad' : ''}">
-        <div class="nm"><span class="dot"></span>${esc(m.name)}<span class="st">${p.length ? esc(p.join(', ')) : 'bereit'}</span></div>
+        <div class="nm"><span class="dot ${lv[0]}" title="${esc(lv[1])}"></span>${esc(m.name)}<span class="st">${p.length ? esc(p.join(', ')) : 'bereit'}</span></div>
         <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       </article>`;
     }).join('');
