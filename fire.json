@@ -1,13 +1,13 @@
 {
- "checked": "2026-10-29T08:23:51Z",
+ "checked": "2026-10-29T15:31:37Z",
  "melder": [
   {
    "name": "Dach",
    "typ": "XS01-WX",
    "online": true,
-   "zuletzt": "2026-10-29T02:19:37Z",
+   "zuletzt": "2026-10-29T15:02:28Z",
    "batterie": 3,
-   "wlan": -44,
+   "wlan": -46,
    "alarm": null,
    "lebensende": null
   },
