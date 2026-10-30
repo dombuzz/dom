@@ -4,10 +4,9 @@
 // 1. Workers & Pages → KV → Namespace «todo» anlegen
 // 2. Workers & Pages → Create → Worker «todo» → diesen Code einfügen → Deploy
 // 3. Worker → Settings → Bindings → KV Namespace: Variable «TODO», Namespace «todo»
-// 4. Worker → Settings → Variables and Secrets → Secret «TOKEN» mit dem Wert aus dem Chat
 //
-// Die Seite schickt den aus dem Passwort abgeleiteten Schlüssel mit. Ohne passenden
-// Schlüssel liefert der Worker nichts aus und speichert nichts.
+// Das Passwort wird nur in der Seite (todo.html, PW_HASH) geprüft. Der Worker selbst
+// ist offen: Wer die Adresse kennt, kann die Liste lesen und ändern.
 
 const ORIGINS = ['https://dom.dombuzz.ch'];
 
@@ -28,9 +27,6 @@ export default {
 
     const url = new URL(req.url);
     if (url.pathname !== '/todos') return json({ error: 'not found' }, 404);
-
-    const auth = req.headers.get('Authorization') || '';
-    if (!env.TOKEN || auth !== 'Bearer ' + env.TOKEN) return json({ error: 'unauthorized' }, 401);
 
     if (req.method === 'GET') {
       const data = await env.TODO.get('list', 'json');

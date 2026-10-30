@@ -147,10 +147,10 @@
   };
 
   /* ---------- Anmeldung ---------- */
-  async function deriveToken(pw) {
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('dom.dombuzz.ch/todo'), iterations: 150000 }, key, 256);
+  // SHA-256 (hex) des Passworts. Platzhalter ersetzen, siehe worker/todo.js.
+  const PW_HASH = 'HASH-HIER-EINSETZEN';
+  async function sha256(pw) {
+    const bits = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
     return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
   function showLogin(text = '') {
@@ -163,11 +163,11 @@
     const msg = $('loginmsg'), btn = $('loginbtn');
     msg.textContent = ''; btn.disabled = true; btn.textContent = 'Prüfe …';
     try {
-      const t = await deriveToken($('pw').value.trim());
-      const res = await fetch(API, { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
-      if (res.status === 401) { msg.textContent = 'Passwort falsch.'; $('pw').select(); return; }
+      const ok = (await sha256($('pw').value.trim())) === PW_HASH;
+      if (!ok) { msg.textContent = 'Passwort falsch.'; $('pw').select(); return; }
+      const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      token = t; store.set(AUTH, { token: t, at: Date.now() });
+      token = 'ok'; store.set(AUTH, { token, at: Date.now() });
       $('pw').value = '';
       unlock(await res.json());
     } catch {
