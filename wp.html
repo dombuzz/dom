@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>Wärmepumpe</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Ccircle cx='50' cy='50' r='9' fill='%2307090f'/%3E%3Cpath fill='%2307090f' d='M50 18c12 0 16 12 6 24l-6 6c-4-10-14-14-12-22 1-5 6-8 12-8zM82 50c0 12-12 16-24 6l-6-6c10-4 14-14 22-12 5 1 8 6 8 12zM50 82c-12 0-16-12-6-24l6-6c4 10 14 14 12 22-1 5-6 8-12 8zM18 50c0-12 12-16 24-6l6 6c-10 4-14 14-22 12-5-1-8-6-8-12z'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
+    --line: #1c2a40; --accent: #f0952a; --link: #ffd166; --bad: #ff4d64; --ok: #5fd39a;
+    --c-out: #3d95f0; --c-sup: #d27a10; --c-ret: #a46ae6; --c-dhw: #1ea97c;
+    --c-el: #3d95f0; --c-heat: #d27a10; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 72px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  h2 { font-size: 15px; margin: 0; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .sub.bad b { color: var(--bad); }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .tile .k { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin-top: 2px; }
+  .tile .v small { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .tile .s { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .sw { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 10px; margin-top: 14px; }
+  .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ph p { margin: 0; color: var(--muted); font-size: 13px; }
+  .seg { display: inline-flex; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 5px 11px; border-radius: 7px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--line); color: var(--text); font-weight: 600; }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chart { position: relative; height: 280px; }
+  .chart.bars { height: 220px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 40px 0; text-align: center; }
+  .on { color: var(--ok); } .off { color: var(--muted); }
+  .warn { color: var(--accent); }
+  details { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  summary { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 4px 6px; border-top: 1px solid var(--line); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  td { color: var(--text); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+  footer p { margin: 0 0 10px; }
+  footer a { color: var(--muted); text-underline-offset: 3px; }
+  footer a:hover, footer a:focus-visible { color: var(--accent); }
+  @media (max-width: 600px) {
+    main { padding-top: 48px; }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile .v { font-size: 21px; }
+    .chart { height: 240px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>Wärme</span>pumpe</h1>
+  <p class="sub" id="sum">Daten werden geladen …</p>
+
+  <div class="tiles" id="temps"></div>
+  <div class="tiles" id="energy"></div>
+
+  <section class="panel" id="p-temp" hidden>
+    <div class="ph">
+      <div><h2>Temperaturen</h2><p id="tsub">°C</p></div>
+      <div class="seg" id="range" role="group" aria-label="Zeitraum">
+        <button data-v="24h" aria-pressed="true">24 h</button><button data-v="7d" aria-pressed="false">7 Tage</button><button data-v="30d" aria-pressed="false">30 Tage</button><button data-v="365d" aria-pressed="false">Jahr</button>
+      </div>
+    </div>
+    <div class="chart"><canvas id="ctemp" aria-label="Verlauf der Temperaturen"></canvas></div>
+  </section>
+
+  <section class="panel" id="p-energy" hidden>
+    <div class="ph"><div><h2>Energie pro Tag</h2><p id="esub">kWh</p></div></div>
+    <div class="chart bars"><canvas id="cenergy" aria-label="Strom und Wärme pro Tag"></canvas></div>
+    <details><summary>Als Tabelle</summary><table id="etab"></table></details>
+  </section>
+
+  <footer>
+    <p id="src"></p>
+    <p>Werte aus der Buderus-Cloud, alle 5 Minuten abgefragt. Inoffizielle Schnittstelle: Für Einstellungen und Störungen gilt die MyBuderus-App.</p>
+    <p><a href="/">→ <span style="color:var(--accent)">dom</span>buzz</a></p>
+  </footer>
+</main>
+<script>
+  const API = 'https://wp.zappa-pfadi.workers.dev';
+  const STALE = 30 * 60;
+  const T = [   // Temperaturreihen: Index in series, Name, Farbvariable
+    { i: 1, k: 'out', name: 'Aussen', c: '--c-out' },
+    { i: 2, k: 'sup', name: 'Vorlauf', c: '--c-sup' },
+    { i: 3, k: 'ret', name: 'Rücklauf', c: '--c-ret' },
+    { i: 4, k: 'dhw', name: 'Warmwasser', c: '--c-dhw' },
+  ];
+  const TICK = { '24h': { hour: '2-digit', minute: '2-digit' }, '7d': { weekday: 'short', day: 'numeric' },
+    '30d': { day: 'numeric', month: 'short' }, '365d': { month: 'short', year: '2-digit' } };
+  const GAP = { '24h': 20 * 60e3, '7d': 3 * 3600e3, '30d': 9 * 3600e3, '365d': 3 * 86400e3 };
+  const state = { range: '24h', d: null, tc: null, ec: null };
+  const $ = id => document.getElementById(id);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (n, d = 1) => n == null || !isFinite(n) ? '–' : Number(n).toLocaleString('de-CH', { minimumFractionDigits: d, maximumFractionDigits: d });
+  function ago(sec) {
+    if (sec < 90) return 'gerade eben';
+    if (sec < 3600) return `vor ${Math.round(sec / 60)} Min.`;
+    if (sec < 86400) return `vor ${Math.round(sec / 3600)} Std.`;
+    return `vor ${Math.round(sec / 86400)} Tagen`;
+  }
+  const CMP = { OFF: 'aus', ON: 'läuft', HEATING: 'heizt', DHW: 'Warmwasser', COOLING: 'kühlt', DEFROST: 'taut ab', STANDBY: 'Standby' };
+  const cmpText = v => v == null ? null : CMP[String(v).toUpperCase()] || String(v);
+  const cmpOn = v => v != null && !/^(off|aus|standby|idle|stop)/i.test(String(v));
+
+  function tile(k, v, unit, s, sw, d = 1) {
+    return `<div class="tile"><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
+      <div class="v">${fmt(v, d)}${v != null ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  }
+
+  function renderTiles(d) {
+    const L = d.latest || {};
+    // 24-h-Spanne je Reihe aus den Verlaufsdaten (nur wenn 24 h geladen)
+    const mm = i => {
+      if (state.range !== '24h') return '';
+      const v = d.series.map(r => r[i]).filter(x => x != null);
+      return v.length ? `24 h: ${fmt(Math.min(...v))} – ${fmt(Math.max(...v))}` : '';
+    };
+    $('temps').innerHTML = T.map(t => tile(t.name, L[t.k], '°C', mm(t.i), t.c)).join('');
+    const today = d.daily.length ? d.daily[d.daily.length - 1] : null;
+    const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
+    const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
+    const env = L.heat != null && L.el != null ? Math.max(0, L.heat - L.el) : null;
+    $('energy').innerHTML =
+      tile('Strom gesamt', L.el, 'kWh', isToday && today[1] != null ? `heute ${fmt(today[1])} kWh` : '', '--c-el', 0) +
+      tile('Wärme gesamt', L.heat, 'kWh', isToday && today[2] != null ? `heute ${fmt(today[2])} kWh` : '', '--c-heat', 0) +
+      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1) +
+      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0);
+  }
+
+  function renderSummary(d) {
+    const L = d.latest, st = d.status || {};
+    const age = L ? d.now - L.ts : null;
+    let html, bad = false;
+    if (!L) { html = st.connected ? 'Noch keine Messwerte, der erste Abruf folgt in wenigen Minuten.' : '<b>Noch nicht eingerichtet.</b> Die Anmeldung im Worker fehlt.'; bad = !st.connected; }
+    else if (age > STALE) { html = `<b>Daten veraltet</b>, letzter Abruf ${ago(age)}.${st.error ? ' Fehler: ' + esc(st.error.msg) : ''}`; bad = true; }
+    else {
+      const c = cmpText(L.cmp);
+      html = c ? `Kompressor <b class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</b>` : '<b>Verbunden</b>';
+      if (L.modu != null && cmpOn(L.cmp)) html += ` · Modulation ${fmt(L.modu, 0)} %`;
+      if (L.pres != null) html += ` · Druck ${fmt(L.pres)} bar`;
+    }
+    $('sum').className = 'sub' + (bad ? ' bad' : '');
+    $('sum').innerHTML = html;
+    $('src').textContent = L ? 'Stand ' + new Date(L.ts * 1000).toLocaleString('de-CH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  }
+
+  const baseOpts = (xmin, xmax, tickFmt) => ({
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { type: 'linear', min: xmin, max: xmax, grid: { color: css('--line') },
+           ticks: { color: css('--muted'), maxRotation: 0, autoSkipPadding: 18, callback: tickFmt } },
+    },
+    plugins: {
+      legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 } } },
+      tooltip: { backgroundColor: '#131b2e', borderColor: css('--line'), borderWidth: 1, titleColor: css('--text'), bodyColor: css('--text'),
+        padding: 10, boxPadding: 4, usePointStyle: true },
+    },
+  });
+
+  function renderTemp(d) {
+    const rows = d.series, xmax = d.now * 1000, xmin = xmax - { '24h': 1, '7d': 7, '30d': 30, '365d': 365 }[d.range] * 86400e3;
+    const tf = v => new Date(v).toLocaleString('de-CH', TICK[d.range]);
+    const sparse = rows.length < 3;
+    const datasets = T.map(t => ({
+      label: t.name, data: rows.filter(r => r[t.i] != null).map(r => ({ x: r[0] * 1000, y: r[t.i] })),
+      borderColor: css(t.c), backgroundColor: css(t.c), borderWidth: 2, pointRadius: sparse ? 4 : 0, pointHoverRadius: 4,
+      pointHoverBorderColor: css('--card'), pointHoverBorderWidth: 2, tension: 0.25, spanGaps: GAP[d.range],
+      borderDash: t.k === 'out' ? [5, 4] : [],
+    })).filter(s => s.data.length);
+    $('p-temp').hidden = false;
+    if (state.tc) state.tc.destroy();
+    const o = baseOpts(xmin, xmax, tf);
+    o.scales.y = { grid: { color: css('--line') }, ticks: { color: css('--muted'), callback: v => v + ' °' } };
+    o.plugins.tooltip.callbacks = {
+      title: it => new Date(it[0].parsed.x).toLocaleString('de-CH', d.range === '365d' ? { day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      label: c => `${c.dataset.label}: ${fmt(c.parsed.y)} °C`,
+    };
+    o.plugins.tooltip.itemSort = (a, b) => b.parsed.y - a.parsed.y;
+    state.tc = new Chart($('ctemp'), { type: 'line', data: { datasets }, options: o });
+    $('tsub').textContent = d.range === '24h' ? '°C · 5-Minuten-Werte' : d.range === '365d' ? '°C · Tagesmittel' : '°C · gemittelt';
+  }
+
+  function renderEnergy(d) {
+    const days = d.daily.filter(r => r[1] != null || r[2] != null);
+    $('p-energy').hidden = false;
+    if (state.ec) { state.ec.destroy(); state.ec = null; }
+    const box = $('cenergy').parentElement;
+    box.querySelector('.empty')?.remove();
+    if (!days.length) {
+      $('cenergy').hidden = true;
+      box.insertAdjacentHTML('beforeend', '<div class="empty">Tageswerte erscheinen nach dem ersten vollen Tag.</div>');
+      $('etab').innerHTML = '';
+      return;
+    }
+    $('cenergy').hidden = false;
+    const lbl = days.map(r => new Date(r[0] * 1000).toLocaleDateString('de-CH', days.length > 40 ? { day: 'numeric', month: 'short' } : { weekday: 'short', day: 'numeric' }));
+    const ds = (name, i, c) => ({ label: name, data: days.map(r => r[i]), backgroundColor: css(c), borderRadius: 4, borderSkipped: 'start',
+      borderColor: css('--card'), borderWidth: { left: 1, right: 1 }, maxBarThickness: 22, categoryPercentage: 0.75, barPercentage: 0.9 });
+    const o = baseOpts();
+    o.scales = {
+      x: { grid: { display: false }, ticks: { color: css('--muted'), maxRotation: 0, autoSkipPadding: 10 } },
+      y: { beginAtZero: true, grid: { color: css('--line') }, ticks: { color: css('--muted'), callback: v => v + ' kWh' } },
+    };
+    o.plugins.tooltip.callbacks = {
+      label: c => `${c.dataset.label}: ${fmt(c.parsed.y)} kWh`,
+      footer: it => { const r = days[it[0].dataIndex]; return r[1] > 0 && r[2] != null ? `Arbeitszahl ${fmt(r[2] / r[1])}` : ''; },
+    };
+    o.plugins.tooltip.footerColor = css('--muted');
+    state.ec = new Chart($('cenergy'), { type: 'bar', data: { labels: lbl, datasets: [ds('Strom', 1, '--c-el'), ds('Wärme', 2, '--c-heat')] }, options: o });
+    const sumEl = days.reduce((a, r) => a + (r[1] || 0), 0), sumH = days.reduce((a, r) => a + (r[2] || 0), 0);
+    $('esub').textContent = `kWh · ${days.length} Tage: Strom ${fmt(sumEl)} · Wärme ${fmt(sumH)}${sumEl > 0 ? ` · Arbeitszahl ${fmt(sumH / sumEl)}` : ''}`;
+    $('etab').innerHTML = '<tr><th>Tag</th><th>Strom kWh</th><th>Wärme kWh</th><th>Arbeitszahl</th></tr>' +
+      days.slice().reverse().map(r => `<tr><td>${new Date(r[0] * 1000).toLocaleDateString('de-CH', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+        <td>${fmt(r[1])}</td><td>${fmt(r[2])}</td><td>${r[1] > 0 && r[2] != null ? fmt(r[2] / r[1]) : '–'}</td></tr>`).join('');
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(`${API}/data?range=${state.range}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      state.d = d;
+      renderSummary(d); renderTiles(d);
+      if (d.series.length) renderTemp(d); else $('p-temp').hidden = !d.latest;
+      renderEnergy(d);
+    } catch (e) {
+      $('sum').className = 'sub bad';
+      $('sum').innerHTML = `<span class="warn">Daten nicht erreichbar (${esc(e.message)}).</span>`;
+    }
+  }
+
+  $('range').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.dataset.v === state.range) return;
+    state.range = b.dataset.v;
+    for (const x of $('range').querySelectorAll('button')) x.setAttribute('aria-pressed', x === b);
+    load();
+  });
+  load();
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60e3);
+</script>
+</body>
+</html>
