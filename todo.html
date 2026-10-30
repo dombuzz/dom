@@ -148,7 +148,7 @@
 
   /* ---------- Anmeldung ---------- */
   // SHA-256 (hex) des Passworts. Platzhalter ersetzen, siehe worker/todo.js.
-  const PW_HASH = 'HASH-HIER-EINSETZEN';
+  const PW_HASH = '19f1b1dd21cddebda73d942780b1b94af707f404faa2204ceea6102fbf780db6';
   async function sha256(pw) {
     const bits = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
     return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
