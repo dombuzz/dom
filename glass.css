@@ -1,0 +1,36 @@
+/* Gemeinsamer Stil für dom.dombuzz.ch: Milchglas, Farbverlauf und sanftes Leuchten (Vorbild: tools.dombuzz.ch) */
+:root {
+  --bar0: color-mix(in srgb, var(--accent, #f0952a) 80%, #000);
+  --rgrad: linear-gradient(90deg, var(--bar0), var(--accent, #f0952a) 70%);
+  --glass: rgba(255,255,255,.045);
+  --glass-line: rgba(255,255,255,.09);
+  --glow: 0 0 0 1px color-mix(in srgb, var(--accent, #f0952a) 55%, transparent), 0 0 20px color-mix(in srgb, var(--accent, #f0952a) 28%, transparent);
+}
+/* weiches Licht im Hintergrund */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(55% 35% at 0% 0%, color-mix(in srgb, var(--accent, #f0952a) 14%, transparent), transparent 70%),
+    radial-gradient(45% 30% at 100% 35%, color-mix(in srgb, var(--accent, #f0952a) 7%, transparent), transparent 70%),
+    radial-gradient(60% 35% at 40% 100%, color-mix(in srgb, var(--accent, #f0952a) 8%, transparent), transparent 70%);
+}
+/* Milchglas: Karten, Felder, Listen */
+.tile, .panel, .list, ul#list, #new, #pw, select, .seg, .path, .btn {
+  background-color: var(--glass) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border-color: var(--glass-line) !important;
+}
+option { background: #0d1220; }
+/* Leuchten beim Darüberfahren und Fokussieren */
+.tile, .panel, .list, #new, #pw, select, .seg, .btn { transition: border-color .15s, box-shadow .2s; }
+.tile:hover, .panel:hover, .list:hover, #new:hover, #new:focus, #pw:hover, #pw:focus,
+select:hover, select:focus, .btn:hover, .btn:focus-visible { border-color: var(--accent) !important; box-shadow: var(--glow); }
+/* Akzente mit Farbverlauf */
+h1 span { background-image: var(--rgrad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.add, .bar i, .seg button[aria-pressed="true"] { background-image: var(--rgrad) !important; }
+.add { box-shadow: 0 0 16px color-mix(in srgb, var(--accent, #f0952a) 30%, transparent); transition: box-shadow .2s, filter .15s; }
+.add:hover, .add:focus-visible { box-shadow: 0 0 22px color-mix(in srgb, var(--accent, #f0952a) 50%, transparent); filter: brightness(1.07); }
+.bar i { box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #f0952a) 40%, transparent); }
+.seg button[aria-pressed="true"] { color: #fff !important; box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #f0952a) 35%, transparent); }
+input[type=checkbox]:checked { background-image: var(--rgrad) !important; box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #f0952a) 45%, transparent); }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
