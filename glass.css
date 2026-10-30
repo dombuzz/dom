@@ -15,16 +15,16 @@ body::before {
     radial-gradient(60% 35% at 40% 100%, color-mix(in srgb, var(--accent, #f0952a) 8%, transparent), transparent 70%);
 }
 /* Milchglas: Karten, Felder, Listen */
-.tile, .panel, .list, ul#list, #new, #pw, select, .seg, .path, .btn {
+.tile, .panel, .list, ul#list, #new, #pw, select, .seg, .path, a.btn {
   background-color: var(--glass) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
   border-color: var(--glass-line) !important;
 }
 option { background: #0d1220; }
 /* Leuchten beim Darüberfahren und Fokussieren */
-.tile, .panel, .list, #new, #pw, select, .seg, .btn { transition: border-color .15s, box-shadow .2s; }
+.tile, .panel, .list, #new, #pw, select, .seg, a.btn { transition: border-color .15s, box-shadow .2s; }
 .tile:hover, .panel:hover, .list:hover, #new:hover, #new:focus, #pw:hover, #pw:focus,
-select:hover, select:focus, .btn:hover, .btn:focus-visible { border-color: var(--accent) !important; box-shadow: var(--glow); }
+select:hover, select:focus, a.btn:hover, a.btn:focus-visible { border-color: var(--accent) !important; box-shadow: var(--glow); }
 /* Akzente mit Farbverlauf */
 h1 span { background-image: var(--rgrad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .add, .bar i, .seg button[aria-pressed="true"] { background-image: var(--rgrad) !important; }
@@ -34,3 +34,45 @@ h1 span { background-image: var(--rgrad); -webkit-background-clip: text; backgro
 .seg button[aria-pressed="true"] { color: #fff !important; box-shadow: 0 0 12px color-mix(in srgb, var(--accent, #f0952a) 35%, transparent); }
 input[type=checkbox]:checked { background-image: var(--rgrad) !important; box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #f0952a) 45%, transparent); }
 @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+
+/* ---- Sonnenkalender (suncal, sunhome) ---- */
+header { -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+.dc, .if, .step, #welcome, .tbtn, .tsw, .sbox {
+  background-color: var(--glass) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border-color: var(--glass-line) !important;
+}
+.dc, .if, .tbtn, .tsw { transition: border-color .15s, box-shadow .2s, background .2s, color .2s; }
+.dc:hover, .if:hover, .if:focus, .tbtn:hover, .tsw:hover { border-color: var(--acc) !important; box-shadow: var(--glow); }
+.dc.today { box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc) 60%, transparent), 0 0 24px color-mix(in srgb, var(--acc) 30%, transparent); }
+.htitle { background-image: var(--rgrad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+button.btn { background-image: var(--rgrad); box-shadow: 0 0 16px color-mix(in srgb, var(--acc) 30%, transparent); transition: box-shadow .2s, filter .15s; }
+button.btn:hover { filter: brightness(1.07); box-shadow: 0 0 22px color-mix(in srgb, var(--acc) 50%, transparent); }
+button.btn:disabled { background-image: none; box-shadow: none; }
+.tbtn.act, .tsw.act { background-image: var(--rgrad) !important; box-shadow: 0 0 14px color-mix(in srgb, var(--acc) 40%, transparent); }
+#tip { background-color: rgba(19,27,46,.82) !important; -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); box-shadow: var(--glow); }
+
+/* ---- Thermik-Karte (termica) ---- */
+.controls { background-color: var(--glass) !important; -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+header input, .controls input, .stat, .tablewrap, #ema, #results, .chip {
+  background-color: var(--glass) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border-color: var(--glass-line) !important;
+}
+header input:hover, header input:focus, .controls input:hover, .controls input:focus, .chip:hover, .stat:hover { border-color: var(--accent) !important; box-shadow: var(--glow); }
+.chip[aria-pressed="true"] { background-image: var(--rgrad) !important; border-color: var(--accent) !important; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+.brand { text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* ---- Bauverfahren-Zeitleiste (bau) ---- */
+.tooltip { background: rgba(15,21,34,.82) !important; -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border: 1px solid var(--glass-line); }
+.node .dot { box-shadow: 0 0 10px color-mix(in srgb, var(--confirmed, #f0952a) 45%, transparent); }
+.node:hover .dot { box-shadow: 0 0 0 6px rgba(240,149,42,.18), 0 0 22px rgba(240,149,42,.5); }
+.node.future .dot { box-shadow: none; }
+
+/* ---- Sonnen-Anzeige (eli) ---- */
+.sun { filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent, #f0952a) 60%, transparent)); }
+.entry { text-shadow: 0 0 26px color-mix(in srgb, var(--accent, #f0952a) 40%, transparent); }
+
+/* Sonnenkalender: html und body haben dort denselben Hintergrund und würden das Hintergrundlicht verdecken */
+html { background-color: var(--bg, #07090f); }
+body:has(header .htitle) { background: transparent !important; }
