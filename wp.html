@@ -169,7 +169,11 @@
     const sameDay = (a, b) => a.toDateString() === b.toDateString();
     const now = new Date();
     let el, heat, sub;
+    // Der Zähler startet bei der Inbetriebnahme. Liegt die erste Messung im laufenden Monat (Anlage ist neu),
+    // ist «Diesen Monat» deshalb gleich dem Gesamtstand und nicht nur die Summe der erfassten Tage.
+    const first = (state.ed || d).first, monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
     if (state.per === 'all') { el = L.el; heat = L.heat; sub = 'seit Inbetriebnahme'; }
+    else if (state.per === 'month' && first != null && first >= monthStart) { el = L.el; heat = L.heat; sub = now.toLocaleDateString('de-CH', { month: 'long' }); }
     else {
       const sel = rows.filter(r => { const t = new Date(r[0] * 1000); return state.per === 'day' ? sameDay(t, now) : t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth(); });
       const sum = i => sel.some(r => r[i] != null) ? sel.reduce((a, r) => a + (r[i] || 0), 0) : null;
@@ -178,7 +182,7 @@
     }
     const cop = el > 0 && heat != null ? heat / el : null;
     const env = heat != null && el != null ? Math.max(0, heat - el) : null;
-    const dd = state.per === 'all' ? 0 : 1;
+    const dd = state.per === 'day' ? 1 : 0;
     $('energy').innerHTML =
       tile('Strom', el, 'kWh', sub, '--c-el', dd, TIP.el) +
       tile('Wärme', heat, 'kWh', sub, '--c-heat', dd, TIP.heat) +
