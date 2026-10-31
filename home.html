@@ -157,6 +157,10 @@
       const sub = [inH != null ? `${fmt(inH, 0)} % rF` : null, live.length ? ago(Math.max(0, now - inTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
       tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Innensensoren, die gerade melden. Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
     }
+    if (!ins.length) {   // Kachel bleibt sichtbar, auch wenn die Innensensoren nicht erreichbar sind
+      issues.push(k ? 'Keine Innensensoren gefunden' : 'Innensensoren nicht erreichbar');
+      tiles.push(t('Im Haus', '--r1', null, k ? 'noch kein Sensor' : 'nicht erreichbar', true, 'Mittelwert der Temperatur aller Innensensoren. Zurzeit sind keine Werte verfügbar.'));
+    }
     $('rooms').innerHTML = tiles.join('') || '<div class="empty">Noch keine Messwerte.</div>';
 
     // Verlauf: Aussen und Mittelwert der Innensensoren (5-Minuten-Raster)
