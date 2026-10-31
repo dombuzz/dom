@@ -70,7 +70,7 @@
   }
 </style>
 </head>
-<body>
+<body class="kl">
 <main>
   <h1><span>Haus</span>übersicht</h1>
   <p class="sub" id="sum">Daten werden geladen …</p>
@@ -149,7 +149,7 @@
     const inT = mean(live.map(s => s.last.temp)), inH = mean(live.filter(s => s.last.hum != null).map(s => s.last.hum));
     const inTs = Math.max(0, ...live.map(s => s.last.ts));
 
-    const t = (name, c, v, sub, stale, tip) => `<div class="tile${stale ? ' stale' : ''}"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
+    const t = (name, c, v, sub, stale, tip) => `<div class="tile${stale ? ' stale' : ''}" style="--rc:var(${c})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
       <div class="v">${fmt(v)}${v != null ? '<small>°C</small>' : ''}</div><div class="s">${esc(sub)}</div></div>`;
     const tiles = [];
     if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out), 'Aussentemperatur, vorerst gemessen am Fühler der Wärmepumpe. Sobald ein eigener Aussensensor läuft, gilt dessen Wert.'));
@@ -207,7 +207,7 @@
     heatT: 'Erzeugte Wärme für Heizung und Warmwasser seit Mitternacht (darunter die Gesamtmenge seit Inbetriebnahme).',
   };
   const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom, über die ganze Laufzeit.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter.';
-  const tile = (k, v, unit, s, tip) => `<div class="tile"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${k}</div><div class="v">${v}${unit && v !== '–' ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  const tile = (k, v, unit, s, tip, rc) => `<div class="tile" style="--rc:var(${rc || '--accent'})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${k}</div><div class="v">${v}${unit && v !== '–' ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   async function loadHp() {
     let d;
     try { d = await get(`${WP}/data?range=24h`); } catch (e) { $('hp').innerHTML = '<div class="empty">Wärmepumpe nicht erreichbar.</div>'; issues.push('Wärmepumpe nicht erreichbar'); return; }
@@ -220,12 +220,12 @@
     const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
     const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
     $('hp').innerHTML =
-      tile(`<span class="dot${cmpOn(L.cmp) ? ' ok' : ''}"></span>Kompressor`, c ? `<span class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</span>` : '–', '', L.modu != null && cmpOn(L.cmp) ? `Modulation ${fmt(L.modu, 0)} %` : (L.pres != null ? `Druck ${fmt(L.pres)} bar` : ''), TIP.cmp) +
-      tile('Vorlauf', fmt(L.sup), '°C', `Rücklauf ${fmt(L.ret)} °C`, TIP.sup) +
-      tile('Warmwasser', fmt(L.dhw), '°C', '', TIP.dhw) +
-      tile('Strom heute', isToday && today[1] != null ? fmt(today[1]) : '–', 'kWh', `gesamt ${fmt(L.el, 0)} kWh`, TIP.elT) +
-      tile('Wärme heute', isToday && today[2] != null ? fmt(today[2]) : '–', 'kWh', `gesamt ${fmt(L.heat, 0)} kWh`, TIP.heatT) +
-      tile('Arbeitszahl', fmt(cop), '', 'Wärme ÷ Strom, gesamt', copTip(cop));
+      tile(`<span class="dot${cmpOn(L.cmp) ? ' ok' : ''}"></span>Kompressor`, c ? `<span class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</span>` : '–', '', L.modu != null && cmpOn(L.cmp) ? `Modulation ${fmt(L.modu, 0)} %` : (L.pres != null ? `Druck ${fmt(L.pres)} bar` : ''), TIP.cmp, cmpOn(L.cmp) ? '--ok' : '--r5') +
+      tile('Vorlauf', fmt(L.sup), '°C', `Rücklauf ${fmt(L.ret)} °C`, TIP.sup, '--r1') +
+      tile('Warmwasser', fmt(L.dhw), '°C', '', TIP.dhw, '--r3') +
+      tile('Strom heute', isToday && today[1] != null ? fmt(today[1]) : '–', 'kWh', `gesamt ${fmt(L.el, 0)} kWh`, TIP.elT, '--r0') +
+      tile('Wärme heute', isToday && today[2] != null ? fmt(today[2]) : '–', 'kWh', `gesamt ${fmt(L.heat, 0)} kWh`, TIP.heatT, '--r1') +
+      tile('Arbeitszahl', fmt(cop), '', 'Wärme ÷ Strom, gesamt', copTip(cop), '--r2');
   }
 
   /* ---------- Rauchmelder ---------- */
@@ -248,7 +248,7 @@
       if (p.length) issues.push(`Rauchmelder ${m.name}: ${p.join(', ')}`);
       const lv = p.length ? 'bad' : m.batterie == null ? '' : m.batterie >= 3 ? 'ok' : 'mid';
       const txt = p.length ? p.join(', ') : m.batterie != null ? 'bereit · Batterie ' + (BATT[m.batterie] || m.batterie) : 'bereit';
-      return `<div class="m${p.length ? ' bad' : ''}"><span class="dot ${lv}"></span><b>${esc(m.name)}</b><span class="st">${esc(txt)}</span></div>`;
+      return `<div class="m${p.length ? ' bad' : ''}" style="--rc:var(${p.length ? '--bad' : lv === 'ok' ? '--ok' : lv === 'mid' ? '--link' : '--muted'})"><span class="dot ${lv}"></span><b>${esc(m.name)}</b><span class="st">${esc(txt)}</span></div>`;
     }).join('') || '<div class="m">Keine Melder gefunden.</div>';
   }
 

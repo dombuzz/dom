@@ -44,7 +44,7 @@
   footer a:hover, footer a:focus-visible { color: var(--accent); }
 </style>
 </head>
-<body>
+<body class="kl">
 <main>
   <h1><span>Rauch</span>melder</h1>
   <p class="sub" id="sum">Status wird geladen …</p>
@@ -101,7 +101,7 @@
       if (m.batterie != null) rows.push(['Batterie', BATT[m.batterie] || m.batterie]);
       const w = wlan(m.wlan); if (w) rows.push(['WLAN', `${w} (${m.wlan} dBm)`]);
       if (m.zuletzt) rows.push(['Letzte Meldung', ago(age(m.zuletzt))]);
-      return `<article class="m${p.length ? ' bad' : ''}">
+      return `<article class="m${p.length ? ' bad' : ''}" style="--rc:var(${p.length ? '--bad' : lv[0] === 'ok' ? '--ok' : lv[0] === 'mid' ? '--link' : '--muted'})">
         <div class="nm"><span class="dot ${lv[0]}" title="${esc(lv[1])}"></span>${esc(m.name)}<span class="st">${p.length ? esc(p.join(', ')) : 'bereit'}</span></div>
         <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       </article>`;

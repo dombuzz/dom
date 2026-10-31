@@ -67,7 +67,7 @@
   }
 </style>
 </head>
-<body>
+<body class="kl">
 <main>
   <h1><span>Wärme</span>pumpe</h1>
   <p class="sub" id="sum">Daten werden geladen …</p>
@@ -135,8 +135,8 @@
   };
   const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom, über die ganze Laufzeit.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter. Im Winter ist sie tiefer als im Frühling oder Herbst.';
 
-  function tile(k, v, unit, s, sw, d = 1, tip) {
-    return `<div class="tile"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
+  function tile(k, v, unit, s, sw, d = 1, tip, rc) {
+    return `<div class="tile" style="--rc:var(${rc || sw || '--accent'})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
       <div class="v">${fmt(v, d)}${v != null ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   }
 
@@ -156,8 +156,8 @@
     $('energy').innerHTML =
       tile('Strom gesamt', L.el, 'kWh', isToday && today[1] != null ? `heute ${fmt(today[1])} kWh` : '', '--c-el', 0, TIP.el) +
       tile('Wärme gesamt', L.heat, 'kWh', isToday && today[2] != null ? `heute ${fmt(today[2])} kWh` : '', '--c-heat', 0, TIP.heat) +
-      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1, copTip(cop)) +
-      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0, TIP.umw);
+      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1, copTip(cop), '--c-ret') +
+      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0, TIP.umw, '--c-dhw');
   }
 
   function renderSummary(d) {

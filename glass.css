@@ -87,3 +87,31 @@ body:has(header .htitle) { background: transparent !important; }
   pointer-events: none; opacity: 0; transition: opacity .12s;
 }
 .dbz-tip.show { opacity: 1; }
+
+/* ---- Stil wie klima.dombuzz.ch (body.kl: home, wp, fire): farbige Karten, Farbverlauf im Hintergrund, farbiges Leuchten ---- */
+body.kl {
+  background:
+    radial-gradient(900px 520px at 6% -4%, #12283a, transparent 70%),
+    radial-gradient(800px 520px at 100% 8%, #2a1c2c, transparent 70%),
+    radial-gradient(1000px 640px at 45% 112%, #12301f, transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body.kl::before { display: none; }
+.kl .tile, .kl .m { background-image: linear-gradient(155deg, color-mix(in srgb, var(--rc, var(--accent)) 17%, transparent) 0%, transparent 62%) !important; }
+.kl .panel { background-image: linear-gradient(180deg, color-mix(in srgb, #3d95f0 10%, transparent) 0%, transparent 42%) !important; }
+.kl .tile:hover, .kl .tile:focus-visible, .kl .m:hover {
+  border-color: var(--rc, var(--accent)) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc, var(--accent)) 55%, transparent), 0 0 22px color-mix(in srgb, var(--rc, var(--accent)) 30%, transparent);
+}
+.kl .tile .sw { box-shadow: 0 0 8px var(--rc, var(--accent)); }
+.kl .tile .k .dot.ok { box-shadow: 0 0 8px var(--ok); }
+.kl .seg button[aria-pressed="true"] { box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent); }
+/* Rauchmelder: jeder Melder als eigene Karte */
+.kl .list { background: none !important; border: 0 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; display: grid; gap: 12px; }
+.kl .list:hover { box-shadow: none !important; }
+.kl .list[hidden] { display: none; }
+.kl .list .m {
+  background-color: var(--glass) !important; border: 1px solid var(--glass-line) !important; border-radius: 14px;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); transition: border-color .15s, box-shadow .2s;
+}
