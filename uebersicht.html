@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>Hausübersicht</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Cpath fill='%2307090f' d='M50 20 20 46h8v30h16V58h12v18h16V46h8z'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/glass.css">
+<style>
+  :root {
+    --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
+    --line: #1c2a40; --accent: #f0952a; --link: #ffd166; --bad: #ff4d64; --ok: #5fd39a;
+    --r0: #3d95f0; --r1: #d27a10; --r2: #a46ae6; --r3: #1ea97c; --r4: #e0607e; --r5: #8a9bb8;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 72px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  h2 { font-size: 17px; margin: 0; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 8px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .sub.bad b { color: var(--bad); }
+  .sec { margin-top: 28px; }
+  .sh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .sh a { color: var(--muted); font-size: 13px; text-underline-offset: 3px; white-space: nowrap; }
+  .sh a:hover, .sh a:focus-visible { color: var(--accent); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .tile .k { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; margin-top: 2px; }
+  .tile .v small { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .tile .s { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .tile.stale .v { opacity: .45; }
+  #rooms .tile .k { white-space: normal; }
+  .sw { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 10px; margin-top: 10px; }
+  .chart { position: relative; height: 260px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 20px 0; text-align: center; }
+  .list { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .m { padding: 11px 16px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .m:first-child { border-top: 0; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(95,211,154,.15); }
+  .dot.mid { background: var(--link); box-shadow: 0 0 0 3px rgba(255,209,102,.15); }
+  .dot.bad { background: var(--bad); box-shadow: 0 0 0 3px rgba(255,77,100,.18); }
+  .m b { font-weight: 600; color: var(--text); }
+  .m .st { margin-left: auto; color: var(--muted); font-size: 14px; text-align: right; }
+  .m.bad .st { color: var(--bad); font-weight: 600; }
+  .on { color: var(--ok); } .off { color: var(--muted); }
+  .warn { color: var(--accent); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+  footer p { margin: 0 0 10px; }
+  footer a { color: var(--muted); text-underline-offset: 3px; }
+  footer a:hover, footer a:focus-visible { color: var(--accent); }
+  @media (max-width: 600px) {
+    main { padding-top: 48px; }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile .v { font-size: 21px; }
+    .chart { height: 230px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>Haus</span>übersicht</h1>
+  <p class="sub" id="sum">Daten werden geladen …</p>
+
+  <section class="sec">
+    <div class="sh"><h2>Temperaturen</h2><a href="https://klima.dombuzz.ch/">Raumklima →</a></div>
+    <div class="tiles" id="rooms"></div>
+    <div class="panel" id="p-temp" hidden>
+      <div class="chart"><canvas id="ctemp" aria-label="Temperaturverlauf der letzten 24 Stunden"></canvas></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sh"><h2>Wärmepumpe</h2><a href="/wp">Details →</a></div>
+    <div class="tiles" id="hp"></div>
+  </section>
+
+  <section class="sec">
+    <div class="sh"><h2>Rauchmelder</h2><a href="/fire">Details →</a></div>
+    <div class="list" id="fire"></div>
+  </section>
+
+  <footer>
+    <p id="src"></p>
+    <p><a href="/">→ <span style="color:var(--accent)">dom</span>buzz</a></p>
+  </footer>
+</main>
+<script>
+  const KLIMA = 'https://klima.zappa-pfadi.workers.dev';
+  const WP = 'https://wp.zappa-pfadi.workers.dev';
+  const COLORS = ['--r0', '--r1', '--r2', '--r3', '--r4', '--r5'];
+  const BATT = ['leer', 'schwach', 'gut', 'voll'];
+  const STALE_T = 30 * 60, STALE_WP = 30 * 60, STALE_FIRE = 13 * 3600;
+  const $ = id => document.getElementById(id);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (n, d = 1) => n == null || !isFinite(n) ? '–' : Number(n).toLocaleString('de-CH', { minimumFractionDigits: d, maximumFractionDigits: d });
+  function ago(sec) {
+    if (sec < 90) return 'gerade eben';
+    if (sec < 3600) return `vor ${Math.round(sec / 60)} Min.`;
+    if (sec < 86400) return `vor ${Math.round(sec / 3600)} Std.`;
+    return `vor ${Math.round(sec / 86400)} Tagen`;
+  }
+  const get = async (url, opt) => { const r = await fetch(url, { cache: 'no-store', ...opt }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+  const CMP = { OFF: 'aus', ON: 'läuft', HEATING: 'heizt', DHW: 'Warmwasser', COOLING: 'kühlt', DEFROST: 'taut ab', STANDBY: 'Standby' };
+  const cmpText = v => v == null ? null : CMP[String(v).toUpperCase()] || String(v);
+  const cmpOn = v => v != null && !/^(off|aus|standby|idle|stop)/i.test(String(v));
+
+  let chart = null;
+  const issues = [];   // Meldungen für die Zusammenfassung oben
+
+  /* ---------- Temperaturen ---------- */
+  async function loadTemps() {
+    const [k, w] = await Promise.all([
+      get(`${KLIMA}/data?range=24h`).catch(() => null),
+      get(`${WP}/klima?range=24h`).catch(() => null),
+    ]);
+    if (!k && !w) { $('rooms').innerHTML = '<div class="empty">Temperaturen nicht erreichbar.</div>'; issues.push('Temperaturen nicht erreichbar'); return; }
+    let latest = (k && k.latest) || [], series = (k && k.series) || {}, now = (k && k.now) || (w && w.now);
+    if (w && w.sensor && w.sensor.last) {
+      latest = latest.filter(s => s.id !== w.sensor.id).concat(w.sensor);
+      series = { ...series, [w.sensor.id]: w.series || [] };
+      now = now || w.now;
+    }
+    const list = latest.filter(s => s.last).sort((a, b) => (b.outdoor ? 1 : 0) - (a.outdoor ? 1 : 0) || (a.source === 'wp') - (b.source === 'wp'));
+    $('rooms').innerHTML = list.map((s, i) => {
+      const stale = s.stale || now - s.last.ts > STALE_T;
+      if (stale) issues.push(`${s.name} meldet nicht`);
+      const sub = [s.last.hum != null ? `${fmt(s.last.hum, 0)} % rF` : null, ago(Math.max(0, now - s.last.ts))].filter(Boolean).join(' · ');
+      return `<div class="tile${stale ? ' stale' : ''}"><div class="k"><span class="sw" style="background:var(${COLORS[i % COLORS.length]})"></span>${esc(s.name)}</div>
+        <div class="v">${fmt(s.last.temp)}<small>°C</small></div><div class="s">${esc(sub)}</div></div>`;
+    }).join('') || '<div class="empty">Noch keine Messwerte.</div>';
+
+    const xmax = now * 1000, xmin = xmax - 864e5;
+    const datasets = list.map((s, i) => ({
+      label: s.name, data: (series[s.id] || []).filter(r => r[1] != null).map(r => ({ x: r[0] * 1000, y: r[1] })),
+      borderColor: css(COLORS[i % COLORS.length]), backgroundColor: css(COLORS[i % COLORS.length]),
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: 20 * 60e3, borderDash: s.outdoor ? [5, 4] : [],
+    })).filter(d => d.data.length > 1);
+    $('p-temp').hidden = !datasets.length;
+    if (chart) { chart.destroy(); chart = null; }
+    if (!datasets.length) return;
+    chart = new Chart($('ctemp'), { type: 'line', data: { datasets }, options: {
+      responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { type: 'linear', min: xmin, max: xmax, grid: { color: css('--line') },
+             ticks: { color: css('--muted'), maxRotation: 0, autoSkipPadding: 18, callback: v => new Date(v).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }) } },
+        y: { grid: { color: css('--line') }, ticks: { color: css('--muted'), callback: v => v + ' °' } },
+      },
+      plugins: {
+        legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 } } },
+        tooltip: { backgroundColor: '#131b2e', borderColor: css('--line'), borderWidth: 1, titleColor: css('--text'), bodyColor: css('--text'), padding: 10, boxPadding: 4, usePointStyle: true,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('de-CH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                       label: c => `${c.dataset.label}: ${fmt(c.parsed.y)} °C` } },
+      },
+    } });
+  }
+
+  /* ---------- Wärmepumpe ---------- */
+  const tile = (k, v, unit, s, d = 1) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}${unit && v !== '–' ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  async function loadHp() {
+    let d;
+    try { d = await get(`${WP}/data?range=24h`); } catch (e) { $('hp').innerHTML = '<div class="empty">Wärmepumpe nicht erreichbar.</div>'; issues.push('Wärmepumpe nicht erreichbar'); return; }
+    const L = d.latest;
+    if (!L) { $('hp').innerHTML = '<div class="empty">Noch keine Messwerte.</div>'; return; }
+    const age = d.now - L.ts;
+    if (age > STALE_WP) issues.push(`Wärmepumpe: Daten veraltet (${ago(age)})`);
+    const c = cmpText(L.cmp);
+    const today = d.daily && d.daily.length ? d.daily[d.daily.length - 1] : null;
+    const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
+    const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
+    $('hp').innerHTML =
+      tile('Kompressor', c ? `<span class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</span>` : '–', '', L.modu != null && cmpOn(L.cmp) ? `Modulation ${fmt(L.modu, 0)} %` : (L.pres != null ? `Druck ${fmt(L.pres)} bar` : '')) +
+      tile('Vorlauf', fmt(L.sup), '°C', `Rücklauf ${fmt(L.ret)} °C`) +
+      tile('Warmwasser', fmt(L.dhw), '°C', '') +
+      tile('Strom heute', isToday && today[1] != null ? fmt(today[1]) : '–', 'kWh', `gesamt ${fmt(L.el, 0)} kWh`) +
+      tile('Wärme heute', isToday && today[2] != null ? fmt(today[2]) : '–', 'kWh', `gesamt ${fmt(L.heat, 0)} kWh`) +
+      tile('Arbeitszahl', fmt(cop), '', 'Wärme ÷ Strom, gesamt');
+  }
+
+  /* ---------- Rauchmelder ---------- */
+  function problems(m) {
+    const p = [];
+    if (m.alarm) p.push('Alarm gemeldet');
+    if (m.online === false) p.push('offline');
+    if (m.lebensende) p.push('Lebensende erreicht');
+    if (m.batterie != null && m.batterie <= 1) p.push('Batterie ' + BATT[m.batterie]);
+    return p;
+  }
+  async function loadFire() {
+    let d;
+    try { d = await get('fire.json?t=' + Date.now()); } catch (e) { $('fire').innerHTML = '<div class="m"><span class="dot"></span>Status nicht verfügbar</div>'; issues.push('Rauchmelder-Status nicht verfügbar'); return; }
+    const list = d.melder || [];
+    const stale = (Date.now() - Date.parse(d.checked)) / 1000 > STALE_FIRE;
+    if (stale) issues.push('Rauchmelder-Status veraltet');
+    $('fire').innerHTML = list.map(m => {
+      const p = problems(m);
+      if (p.length) issues.push(`Rauchmelder ${m.name}: ${p.join(', ')}`);
+      const lv = p.length ? 'bad' : m.batterie == null ? '' : m.batterie >= 3 ? 'ok' : 'mid';
+      const txt = p.length ? p.join(', ') : m.batterie != null ? 'bereit · Batterie ' + (BATT[m.batterie] || m.batterie) : 'bereit';
+      return `<div class="m${p.length ? ' bad' : ''}"><span class="dot ${lv}"></span><b>${esc(m.name)}</b><span class="st">${esc(txt)}</span></div>`;
+    }).join('') || '<div class="m">Keine Melder gefunden.</div>';
+  }
+
+  async function load() {
+    issues.length = 0;
+    await Promise.all([loadTemps(), loadHp(), loadFire()]);
+    const bad = issues.length > 0;
+    $('sum').className = 'sub' + (bad ? ' bad' : '');
+    $('sum').innerHTML = bad ? `<b>${esc(issues[0])}</b>${issues.length > 1 ? ` · ${issues.length - 1} ${issues.length === 2 ? 'weiterer Hinweis' : 'weitere Hinweise'}` : ''}` : '<b>Alles in Ordnung</b>, alle Werte aktuell.';
+    $('src').textContent = 'Stand ' + new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+  }
+  load();
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 2 * 60e3);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
+</script>
+</body>
+</html>
