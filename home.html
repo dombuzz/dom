@@ -9,6 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Cpath fill='%2307090f' d='M50 20 20 46h8v30h16V58h12v18h16V46h8z'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/glass.css">
+<script src="/tip.js" defer></script>
 <style>
   :root {
     --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
@@ -148,13 +149,13 @@
     const inT = mean(live.map(s => s.last.temp)), inH = mean(live.filter(s => s.last.hum != null).map(s => s.last.hum));
     const inTs = Math.max(0, ...live.map(s => s.last.ts));
 
-    const t = (name, c, v, sub, stale) => `<div class="tile${stale ? ' stale' : ''}"><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
+    const t = (name, c, v, sub, stale, tip) => `<div class="tile${stale ? ' stale' : ''}"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
       <div class="v">${fmt(v)}${v != null ? '<small>°C</small>' : ''}</div><div class="s">${esc(sub)}</div></div>`;
     const tiles = [];
-    if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out)));
+    if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out), 'Aussentemperatur, vorerst gemessen am Fühler der Wärmepumpe. Sobald ein eigener Aussensensor läuft, gilt dessen Wert.'));
     if (ins.length) {
       const sub = [inH != null ? `${fmt(inH, 0)} % rF` : null, live.length ? ago(Math.max(0, now - inTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
-      tiles.push(t('Im Haus', '--r1', inT, sub, !live.length));
+      tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Innensensoren, die gerade melden. Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
     }
     $('rooms').innerHTML = tiles.join('') || '<div class="empty">Noch keine Messwerte.</div>';
 
@@ -198,7 +199,15 @@
   }
 
   /* ---------- Wärmepumpe ---------- */
-  const tile = (k, v, unit, s, d = 1) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}${unit && v !== '–' ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  const TIP = {
+    cmp: 'Der Verdichter (Kompressor) ist das Herz der Wärmepumpe. Grüner Punkt: Er läuft gerade. Die Modulation gibt an, mit wie viel Leistung in Prozent.',
+    sup: 'Temperatur des Heizwassers, das die Wärmepumpe in die Heizung schickt (darunter der Rücklauf). Je tiefer, desto effizienter.',
+    dhw: 'Temperatur im Warmwasserspeicher.',
+    elT: 'Stromverbrauch der Wärmepumpe seit Mitternacht (darunter der Gesamtverbrauch seit Inbetriebnahme).',
+    heatT: 'Erzeugte Wärme für Heizung und Warmwasser seit Mitternacht (darunter die Gesamtmenge seit Inbetriebnahme).',
+  };
+  const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom, über die ganze Laufzeit.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter.';
+  const tile = (k, v, unit, s, tip) => `<div class="tile"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${k}</div><div class="v">${v}${unit && v !== '–' ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   async function loadHp() {
     let d;
     try { d = await get(`${WP}/data?range=24h`); } catch (e) { $('hp').innerHTML = '<div class="empty">Wärmepumpe nicht erreichbar.</div>'; issues.push('Wärmepumpe nicht erreichbar'); return; }
@@ -211,12 +220,12 @@
     const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
     const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
     $('hp').innerHTML =
-      tile(`<span class="dot${cmpOn(L.cmp) ? ' ok' : ''}"></span>Kompressor`, c ? `<span class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</span>` : '–', '', L.modu != null && cmpOn(L.cmp) ? `Modulation ${fmt(L.modu, 0)} %` : (L.pres != null ? `Druck ${fmt(L.pres)} bar` : '')) +
-      tile('Vorlauf', fmt(L.sup), '°C', `Rücklauf ${fmt(L.ret)} °C`) +
-      tile('Warmwasser', fmt(L.dhw), '°C', '') +
-      tile('Strom heute', isToday && today[1] != null ? fmt(today[1]) : '–', 'kWh', `gesamt ${fmt(L.el, 0)} kWh`) +
-      tile('Wärme heute', isToday && today[2] != null ? fmt(today[2]) : '–', 'kWh', `gesamt ${fmt(L.heat, 0)} kWh`) +
-      tile('Arbeitszahl', fmt(cop), '', 'Wärme ÷ Strom, gesamt');
+      tile(`<span class="dot${cmpOn(L.cmp) ? ' ok' : ''}"></span>Kompressor`, c ? `<span class="${cmpOn(L.cmp) ? 'on' : 'off'}">${esc(c)}</span>` : '–', '', L.modu != null && cmpOn(L.cmp) ? `Modulation ${fmt(L.modu, 0)} %` : (L.pres != null ? `Druck ${fmt(L.pres)} bar` : ''), TIP.cmp) +
+      tile('Vorlauf', fmt(L.sup), '°C', `Rücklauf ${fmt(L.ret)} °C`, TIP.sup) +
+      tile('Warmwasser', fmt(L.dhw), '°C', '', TIP.dhw) +
+      tile('Strom heute', isToday && today[1] != null ? fmt(today[1]) : '–', 'kWh', `gesamt ${fmt(L.el, 0)} kWh`, TIP.elT) +
+      tile('Wärme heute', isToday && today[2] != null ? fmt(today[2]) : '–', 'kWh', `gesamt ${fmt(L.heat, 0)} kWh`, TIP.heatT) +
+      tile('Arbeitszahl', fmt(cop), '', 'Wärme ÷ Strom, gesamt', copTip(cop));
   }
 
   /* ---------- Rauchmelder ---------- */

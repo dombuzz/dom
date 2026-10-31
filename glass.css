@@ -76,3 +76,14 @@ header input:hover, header input:focus, .controls input:hover, .controls input:f
 /* Sonnenkalender: html und body haben dort denselben Hintergrund und würden das Hintergrundlicht verdecken */
 html { background-color: var(--bg, #07090f); }
 body:has(header .htitle) { background: transparent !important; }
+
+/* ---- Erklär-Tooltips (tip.js) ---- */
+[data-tip] { cursor: help; }
+.dbz-tip {
+  position: fixed; z-index: 60; left: 0; top: 0; max-width: min(270px, calc(100vw - 16px)); padding: 9px 12px; border-radius: 10px;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text, #b8c8e0);
+  background: rgba(19,27,46,.92); border: 1px solid var(--glass-line); box-shadow: 0 8px 24px rgba(0,0,0,.45), 0 0 16px color-mix(in srgb, var(--accent, #f0952a) 18%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+  pointer-events: none; opacity: 0; transition: opacity .12s;
+}
+.dbz-tip.show { opacity: 1; }

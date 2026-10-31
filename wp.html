@@ -9,6 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Ccircle cx='50' cy='50' r='9' fill='%2307090f'/%3E%3Cpath fill='%2307090f' d='M50 18c12 0 16 12 6 24l-6 6c-4-10-14-14-12-22 1-5 6-8 12-8zM82 50c0 12-12 16-24 6l-6-6c10-4 14-14 22-12 5 1 8 6 8 12zM50 82c-12 0-16-12-6-24l6-6c4 10 14 14 12 22-1 5-6 8-12 8zM18 50c0-12 12-16 24-6l6 6c-10 4-14 14-22 12-5-1-8-6-8-12z'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/glass.css">
+<script src="/tip.js" defer></script>
 <style>
   :root {
     --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
@@ -123,8 +124,19 @@
   const cmpText = v => v == null ? null : CMP[String(v).toUpperCase()] || String(v);
   const cmpOn = v => v != null && !/^(off|aus|standby|idle|stop)/i.test(String(v));
 
-  function tile(k, v, unit, s, sw, d = 1) {
-    return `<div class="tile"><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
+  const TIP = {
+    out: 'Temperatur der Aussenluft, gemessen am Fühler der Wärmepumpe.',
+    sup: 'Temperatur des Heizwassers, das die Wärmepumpe in die Heizung schickt. Je tiefer, desto effizienter arbeitet die Anlage.',
+    ret: 'Temperatur des Heizwassers, das aus der Heizung zurückkommt. Der Unterschied zum Vorlauf zeigt, wie viel Wärme im Haus abgegeben wird.',
+    dhw: 'Temperatur im Warmwasserspeicher.',
+    el: 'Elektrische Energie, die die Anlage seit der Inbetriebnahme verbraucht hat, inklusive Zuheizer.',
+    heat: 'Heizwärme und Warmwasser, die die Anlage seit der Inbetriebnahme erzeugt hat.',
+    umw: 'Der Teil der Wärme, der gratis aus der Aussenluft kommt: erzeugte Wärme minus eingesetzter Strom.',
+  };
+  const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom, über die ganze Laufzeit.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter. Im Winter ist sie tiefer als im Frühling oder Herbst.';
+
+  function tile(k, v, unit, s, sw, d = 1, tip) {
+    return `<div class="tile"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
       <div class="v">${fmt(v, d)}${v != null ? `<small>${unit}</small>` : ''}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   }
 
@@ -136,16 +148,16 @@
       const v = d.series.map(r => r[i]).filter(x => x != null);
       return v.length ? `24 h: ${fmt(Math.min(...v))} – ${fmt(Math.max(...v))}` : '';
     };
-    $('temps').innerHTML = T.map(t => tile(t.name, L[t.k], '°C', mm(t.i), t.c)).join('');
+    $('temps').innerHTML = T.map(t => tile(t.name, L[t.k], '°C', mm(t.i), t.c, 1, TIP[t.k])).join('');
     const today = d.daily.length ? d.daily[d.daily.length - 1] : null;
     const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
     const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
     const env = L.heat != null && L.el != null ? Math.max(0, L.heat - L.el) : null;
     $('energy').innerHTML =
-      tile('Strom gesamt', L.el, 'kWh', isToday && today[1] != null ? `heute ${fmt(today[1])} kWh` : '', '--c-el', 0) +
-      tile('Wärme gesamt', L.heat, 'kWh', isToday && today[2] != null ? `heute ${fmt(today[2])} kWh` : '', '--c-heat', 0) +
-      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1) +
-      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0);
+      tile('Strom gesamt', L.el, 'kWh', isToday && today[1] != null ? `heute ${fmt(today[1])} kWh` : '', '--c-el', 0, TIP.el) +
+      tile('Wärme gesamt', L.heat, 'kWh', isToday && today[2] != null ? `heute ${fmt(today[2])} kWh` : '', '--c-heat', 0, TIP.heat) +
+      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1, copTip(cop)) +
+      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0, TIP.umw);
   }
 
   function renderSummary(d) {
