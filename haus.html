@@ -223,7 +223,7 @@
     $('src').textContent = 'Stand ' + new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
   }
   load();
-  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 2 * 60e3);
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
 </script>
 </body>
