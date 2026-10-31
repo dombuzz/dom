@@ -37,10 +37,12 @@
   .tile .s { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .sw { width: 9px; height: 9px; border-radius: 3px; flex: none; }
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 10px; margin-top: 14px; }
-  .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-  .ph p { margin: 0; color: var(--muted); font-size: 13px; }
+  .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: nowrap; margin-bottom: 2px; }
+  .ph h2 { white-space: nowrap; }
+  .psub { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+  .eh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 8px; }
   .seg { display: inline-flex; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-  .seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 5px 11px; border-radius: 7px; cursor: pointer; }
+  .seg button { white-space: nowrap; font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 5px 11px; border-radius: 7px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--line); color: var(--text); font-weight: 600; }
   .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .chart { position: relative; height: 280px; }
@@ -64,6 +66,7 @@
     .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tile .v { font-size: 21px; }
     .chart { height: 240px; }
+    .seg button { padding: 5px 7px; font-size: 12.5px; }
   }
 </style>
 </head>
@@ -73,20 +76,28 @@
   <p class="sub" id="sum">Daten werden geladen …</p>
 
   <div class="tiles" id="temps"></div>
+  <div class="eh">
+    <h2>Energie</h2>
+    <div class="seg" id="eper" role="group" aria-label="Zeitraum Energie">
+      <button data-v="day" aria-pressed="true">Heute</button><button data-v="month" aria-pressed="false">Diesen Monat</button><button data-v="all" aria-pressed="false">Gesamt</button>
+    </div>
+  </div>
   <div class="tiles" id="energy"></div>
 
   <section class="panel" id="p-temp" hidden>
     <div class="ph">
-      <div><h2>Temperaturen</h2><p id="tsub">°C</p></div>
+      <h2>Temperaturen</h2>
       <div class="seg" id="range" role="group" aria-label="Zeitraum">
         <button data-v="24h" aria-pressed="true">24 h</button><button data-v="7d" aria-pressed="false">7 Tage</button><button data-v="30d" aria-pressed="false">30 Tage</button><button data-v="365d" aria-pressed="false">Jahr</button>
       </div>
     </div>
+    <p class="psub" id="tsub">°C</p>
     <div class="chart"><canvas id="ctemp" aria-label="Verlauf der Temperaturen"></canvas></div>
   </section>
 
   <section class="panel" id="p-energy" hidden>
-    <div class="ph"><div><h2>Energie pro Tag</h2><p id="esub">kWh</p></div></div>
+    <div class="ph"><h2>Energie pro Tag</h2></div>
+    <p class="psub" id="esub">kWh</p>
     <div class="chart bars"><canvas id="cenergy" aria-label="Strom und Wärme pro Tag"></canvas></div>
     <details><summary>Als Tabelle</summary><table id="etab"></table></details>
   </section>
@@ -109,7 +120,7 @@
   const TICK = { '24h': { hour: '2-digit', minute: '2-digit' }, '7d': { weekday: 'short', day: 'numeric' },
     '30d': { day: 'numeric', month: 'short' }, '365d': { month: 'short', year: '2-digit' } };
   const GAP = { '24h': 20 * 60e3, '7d': 3 * 3600e3, '30d': 9 * 3600e3, '365d': 3 * 86400e3 };
-  const state = { range: '24h', d: null, tc: null, ec: null };
+  const state = { range: '24h', d: null, tc: null, ec: null, per: 'day', ed: null };
   const $ = id => document.getElementById(id);
   const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -129,11 +140,11 @@
     sup: 'Temperatur des Heizwassers, das die Wärmepumpe in die Heizung schickt. Je tiefer, desto effizienter arbeitet die Anlage.',
     ret: 'Temperatur des Heizwassers, das aus der Heizung zurückkommt. Der Unterschied zum Vorlauf zeigt, wie viel Wärme im Haus abgegeben wird.',
     dhw: 'Temperatur im Warmwasserspeicher.',
-    el: 'Elektrische Energie, die die Anlage seit der Inbetriebnahme verbraucht hat, inklusive Zuheizer.',
-    heat: 'Heizwärme und Warmwasser, die die Anlage seit der Inbetriebnahme erzeugt hat.',
+    el: 'Elektrische Energie, die die Anlage im gewählten Zeitraum verbraucht hat, inklusive Zuheizer.',
+    heat: 'Heizwärme und Warmwasser, die die Anlage im gewählten Zeitraum erzeugt hat.',
     umw: 'Der Teil der Wärme, der gratis aus der Aussenluft kommt: erzeugte Wärme minus eingesetzter Strom.',
   };
-  const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom, über die ganze Laufzeit.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter. Im Winter ist sie tiefer als im Frühling oder Herbst.';
+  const copTip = c => 'Erzeugte Wärme geteilt durch eingesetzten Strom im gewählten Zeitraum.' + (c != null ? ` ${fmt(c)} heisst: Aus 1 kWh Strom werden ${fmt(c)} kWh Wärme.` : '') + ' Je höher, desto effizienter. Im Winter ist sie tiefer als im Frühling oder Herbst.';
 
   function tile(k, v, unit, s, sw, d = 1, tip, rc) {
     return `<div class="tile" style="--rc:var(${rc || sw || '--accent'})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k">${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ''}${k}</div>
@@ -149,15 +160,30 @@
       return v.length ? `24 h: ${fmt(Math.min(...v))} – ${fmt(Math.max(...v))}` : '';
     };
     $('temps').innerHTML = T.map(t => tile(t.name, L[t.k], '°C', mm(t.i), t.c, 1, TIP[t.k])).join('');
-    const today = d.daily.length ? d.daily[d.daily.length - 1] : null;
-    const isToday = today && new Date(today[0] * 1000).toDateString() === new Date().toDateString();
-    const cop = L.el > 0 && L.heat != null ? L.heat / L.el : null;
-    const env = L.heat != null && L.el != null ? Math.max(0, L.heat - L.el) : null;
+    renderEnergyTiles(d);
+  }
+
+  // Energie-Kacheln für Heute / Diesen Monat / Gesamt (wie in der MyBuderus-App)
+  function renderEnergyTiles(d) {
+    const L = d.latest || {}, rows = (state.ed || d).daily || [];
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+    const now = new Date();
+    let el, heat, sub;
+    if (state.per === 'all') { el = L.el; heat = L.heat; sub = 'seit Inbetriebnahme'; }
+    else {
+      const sel = rows.filter(r => { const t = new Date(r[0] * 1000); return state.per === 'day' ? sameDay(t, now) : t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth(); });
+      const sum = i => sel.some(r => r[i] != null) ? sel.reduce((a, r) => a + (r[i] || 0), 0) : null;
+      el = sum(1); heat = sum(2);
+      sub = state.per === 'day' ? 'heute' : now.toLocaleDateString('de-CH', { month: 'long' });
+    }
+    const cop = el > 0 && heat != null ? heat / el : null;
+    const env = heat != null && el != null ? Math.max(0, heat - el) : null;
+    const dd = state.per === 'all' ? 0 : 1;
     $('energy').innerHTML =
-      tile('Strom gesamt', L.el, 'kWh', isToday && today[1] != null ? `heute ${fmt(today[1])} kWh` : '', '--c-el', 0, TIP.el) +
-      tile('Wärme gesamt', L.heat, 'kWh', isToday && today[2] != null ? `heute ${fmt(today[2])} kWh` : '', '--c-heat', 0, TIP.heat) +
-      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom, gesamt', null, 1, copTip(cop), '--c-ret') +
-      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, 0, TIP.umw, '--c-dhw');
+      tile('Strom', el, 'kWh', sub, '--c-el', dd, TIP.el) +
+      tile('Wärme', heat, 'kWh', sub, '--c-heat', dd, TIP.heat) +
+      tile('Arbeitszahl', cop, '', 'Wärme ÷ Strom', null, 1, copTip(cop), '--c-ret') +
+      tile('Umweltenergie', env, 'kWh', 'aus der Aussenluft', null, dd, TIP.umw, '--c-dhw');
   }
 
   function renderSummary(d) {
@@ -254,6 +280,8 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const d = await res.json();
       state.d = d;
+      state.ed = d.range === '30d' ? d : null;
+      if (!state.ed) { try { const r2 = await fetch(`${API}/data?range=30d`, { cache: 'no-store' }); if (r2.ok) state.ed = await r2.json(); } catch (e) {} }
       renderSummary(d); renderTiles(d);
       if (d.series.length) renderTemp(d); else $('p-temp').hidden = !d.latest;
       renderEnergy(d);
@@ -268,6 +296,12 @@
     state.range = b.dataset.v;
     for (const x of $('range').querySelectorAll('button')) x.setAttribute('aria-pressed', x === b);
     load();
+  });
+  $('eper').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.dataset.v === state.per) return;
+    state.per = b.dataset.v;
+    for (const x of $('eper').querySelectorAll('button')) x.setAttribute('aria-pressed', x === b);
+    if (state.d) renderEnergyTiles(state.d);
   });
   load();
   setInterval(() => { if (document.visibilityState === 'visible') load(); }, 5 * 60e3);
