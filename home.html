@@ -62,7 +62,12 @@
   .kl #fire .m { padding: 7px 11px; gap: 8px; flex-wrap: nowrap; border-radius: 12px; font-size: 14px; min-width: 0; }
   .kl #fire .m b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .kl #fire .m .st { font-size: 12px; white-space: nowrap; }
-  @media (max-width: 420px) { .kl #fire { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) {
+    .kl #fire { display: flex; flex-wrap: wrap; gap: 6px; }
+    .kl #fire .m { flex: 1 1 0; min-width: 78px; padding: 6px 9px; gap: 6px; font-size: 13px; justify-content: center; }
+    .kl #fire .m:not(.bad) .st { display: none; }
+    .kl #fire .m.bad { flex-basis: 100%; }
+  }
   .warn { color: var(--accent); }
   footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
   footer p { margin: 0 0 10px; }
