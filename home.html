@@ -222,7 +222,8 @@
         y: { grid: { color: css('--line') }, ticks: { color: css('--muted'), callback: v => v + ' °' } },
       },
       plugins: {
-        legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 } } },
+        legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 },
+          generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map(it => ({ ...it, lineDash: [] })) } },
         tooltip: { backgroundColor: '#131b2e', borderColor: css('--line'), borderWidth: 1, titleColor: css('--text'), bodyColor: css('--text'), padding: 10, boxPadding: 4, usePointStyle: true,
           itemSort: (a, b) => b.parsed.y - a.parsed.y,
           callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('de-CH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),

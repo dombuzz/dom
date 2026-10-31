@@ -215,7 +215,8 @@
            ticks: { color: css('--muted'), maxRotation: 0, autoSkipPadding: 18, callback: tickFmt } },
     },
     plugins: {
-      legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 } } },
+      legend: { position: 'top', align: 'start', labels: { color: css('--text'), boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3, font: { size: 13 },
+        generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map(it => ({ ...it, lineDash: [] })) } },
       tooltip: { backgroundColor: '#131b2e', borderColor: css('--line'), borderWidth: 1, titleColor: css('--text'), bodyColor: css('--text'),
         padding: 10, boxPadding: 4, usePointStyle: true },
     },
