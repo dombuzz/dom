@@ -153,8 +153,8 @@
     // Aussen: eigener Aussensensor, sonst der Fühler der Wärmepumpe
     const outs = all.filter(s => s.outdoor);
     const out = outs.find(s => s.source !== 'wp') || outs[0] || null;
-    // Im Haus: Mittelwert aller Innensensoren (nur solche, die aktuell melden)
-    const ins = all.filter(s => !s.outdoor);
+    // Im Haus: Mittelwert der Wohnräume (ohne Kellerräume, nur solche, die aktuell melden)
+    const ins = all.filter(s => !s.outdoor && !s.keller);
     const live = ins.filter(s => !isStale(s));
     const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
     const inT = mean(live.map(s => s.last.temp)), inH = mean(live.filter(s => s.last.hum != null).map(s => s.last.hum));
@@ -166,7 +166,7 @@
     if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out), 'Aussentemperatur, vorerst gemessen am Fühler der Wärmepumpe. Sobald ein eigener Aussensensor läuft, gilt dessen Wert.'));
     if (ins.length) {
       const sub = [inH != null ? `${fmt(inH, 0)} % rF` : null, live.length ? ago(Math.max(0, now - inTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
-      tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Innensensoren, die gerade melden. Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
+      tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Wohnräume, die gerade melden. Kellerräume und Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
     }
     if (!ins.length) {   // Kachel bleibt sichtbar, auch wenn die Innensensoren nicht erreichbar sind
       issues.push(k ? 'Keine Innensensoren gefunden' : 'Innensensoren nicht erreichbar');
