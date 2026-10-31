@@ -159,7 +159,7 @@
     const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
     const inT = mean(live.map(s => s.last.temp)), inH = mean(live.filter(s => s.last.hum != null).map(s => s.last.hum));
     const inTs = Math.max(0, ...live.map(s => s.last.ts));
-    // Keller: eigene Kachel mit dem Mittelwert der Kellerräume (z. B. Werkstatt, Tankraum)
+    // Keller: eigene Kachel mit dem Mittelwert der Kellerräume (z. B. Werkstatt, Heizungsraum)
     const kel = all.filter(s => !s.outdoor && s.keller), kLive = kel.filter(s => !isStale(s));
     const kT = mean(kLive.map(s => s.last.temp)), kH = mean(kLive.filter(s => s.last.hum != null).map(s => s.last.hum));
     const kTs = Math.max(0, ...kLive.map(s => s.last.ts));
@@ -174,7 +174,7 @@
     }
     if (kel.length) {
       const sub = [kH != null ? `${fmt(kH, 0)} % rF` : null, kLive.length ? ago(Math.max(0, now - kTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
-      tiles.push(t('Keller', '--r2', kT, sub, !kLive.length, 'Mittelwert der Temperatur der Kellerräume, die gerade melden (Werkstatt, Tankraum). Gehört nicht zum Wert «Im Haus».'));
+      tiles.push(t('Keller', '--r2', kT, sub, !kLive.length, 'Mittelwert der Temperatur der Kellerräume, die gerade melden (Werkstatt, Heizungsraum). Gehört nicht zum Wert «Im Haus».'));
     }
     if (!ins.length) {   // Kachel bleibt sichtbar, auch wenn die Innensensoren nicht erreichbar sind
       issues.push(k ? 'Keine Innensensoren gefunden' : 'Innensensoren nicht erreichbar');
