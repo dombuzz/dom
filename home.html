@@ -57,6 +57,12 @@
   .m .st { margin-left: auto; color: var(--muted); font-size: 14px; text-align: right; }
   .m.bad .st { color: var(--bad); font-weight: 600; }
   .on { color: var(--ok); } .off { color: var(--muted); }
+  /* Rauchmelder kompakt: kleine Chips nebeneinander */
+  .kl #fire { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .kl #fire .m { padding: 7px 11px; gap: 8px; flex-wrap: nowrap; border-radius: 12px; font-size: 14px; min-width: 0; }
+  .kl #fire .m b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kl #fire .m .st { font-size: 12px; white-space: nowrap; }
+  @media (max-width: 420px) { .kl #fire { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .warn { color: var(--accent); }
   footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
   footer p { margin: 0 0 10px; }
@@ -251,8 +257,9 @@
       const p = problems(m);
       if (p.length) issues.push(`Rauchmelder ${m.name}: ${p.join(', ')}`);
       const lv = p.length ? 'bad' : m.batterie == null ? '' : m.batterie >= 3 ? 'ok' : 'mid';
-      const txt = p.length ? p.join(', ') : m.batterie != null ? 'bereit · Batterie ' + (BATT[m.batterie] || m.batterie) : 'bereit';
-      return `<div class="m${p.length ? ' bad' : ''}" style="--rc:var(${p.length ? '--bad' : lv === 'ok' ? '--ok' : lv === 'mid' ? '--link' : '--muted'})"><span class="dot ${lv}"></span><b>${esc(m.name)}</b><span class="st">${esc(txt)}</span></div>`;
+      const full = p.length ? p.join(', ') : m.batterie != null ? 'bereit · Batterie ' + (BATT[m.batterie] || m.batterie) : 'bereit';
+      const txt = p.length ? p.join(', ') : 'bereit';
+      return `<div title="${esc(full)}" class="m${p.length ? ' bad' : ''}" style="--rc:var(${p.length ? '--bad' : lv === 'ok' ? '--ok' : lv === 'mid' ? '--link' : '--muted'})"><span class="dot ${lv}"></span><b title="${esc(full)}">${esc(m.name)}</b><span class="st">${esc(txt)}</span></div>`;
     }).join('') || '<div class="m">Keine Melder gefunden.</div>';
   }
 
