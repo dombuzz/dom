@@ -76,14 +76,6 @@
   <p class="sub" id="sum">Daten werden geladen …</p>
 
   <div class="tiles" id="temps"></div>
-  <div class="eh">
-    <h2>Energie</h2>
-    <div class="seg" id="eper" role="group" aria-label="Zeitraum Energie">
-      <button data-v="day" aria-pressed="true">Heute</button><button data-v="month" aria-pressed="false">Diesen Monat</button><button data-v="all" aria-pressed="false">Gesamt</button>
-    </div>
-  </div>
-  <div class="tiles" id="energy"></div>
-
   <section class="panel" id="p-temp" hidden>
     <div class="ph">
       <h2>Temperaturen</h2>
@@ -94,6 +86,14 @@
     <p class="psub" id="tsub">°C</p>
     <div class="chart"><canvas id="ctemp" aria-label="Verlauf der Temperaturen"></canvas></div>
   </section>
+
+  <div class="eh">
+    <h2>Energie</h2>
+    <div class="seg" id="eper" role="group" aria-label="Zeitraum Energie">
+      <button data-v="day" aria-pressed="true">Heute</button><button data-v="month" aria-pressed="false">Diesen Monat</button><button data-v="all" aria-pressed="false">Gesamt</button>
+    </div>
+  </div>
+  <div class="tiles" id="energy"></div>
 
   <section class="panel" id="p-energy" hidden>
     <div class="ph"><h2>Energie pro Tag</h2></div>
