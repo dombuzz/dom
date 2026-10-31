@@ -159,6 +159,10 @@
     const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
     const inT = mean(live.map(s => s.last.temp)), inH = mean(live.filter(s => s.last.hum != null).map(s => s.last.hum));
     const inTs = Math.max(0, ...live.map(s => s.last.ts));
+    // Keller: eigene Kachel mit dem Mittelwert der Kellerräume (z. B. Werkstatt, Tankraum)
+    const kel = all.filter(s => !s.outdoor && s.keller), kLive = kel.filter(s => !isStale(s));
+    const kT = mean(kLive.map(s => s.last.temp)), kH = mean(kLive.filter(s => s.last.hum != null).map(s => s.last.hum));
+    const kTs = Math.max(0, ...kLive.map(s => s.last.ts));
 
     const t = (name, c, v, sub, stale, tip) => `<div class="tile${stale ? ' stale' : ''}" style="--rc:var(${c})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
       <div class="v">${fmt(v)}${v != null ? '<small>°C</small>' : ''}</div><div class="s">${esc(sub)}</div></div>`;
@@ -167,6 +171,10 @@
     if (ins.length) {
       const sub = [inH != null ? `${fmt(inH, 0)} % rF` : null, live.length ? ago(Math.max(0, now - inTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
       tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Wohnräume, die gerade melden. Kellerräume und Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
+    }
+    if (kel.length) {
+      const sub = [kH != null ? `${fmt(kH, 0)} % rF` : null, kLive.length ? ago(Math.max(0, now - kTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
+      tiles.push(t('Keller', '--r2', kT, sub, !kLive.length, 'Mittelwert der Temperatur der Kellerräume, die gerade melden (Werkstatt, Tankraum). Gehört nicht zum Wert «Im Haus».'));
     }
     if (!ins.length) {   // Kachel bleibt sichtbar, auch wenn die Innensensoren nicht erreichbar sind
       issues.push(k ? 'Keine Innensensoren gefunden' : 'Innensensoren nicht erreichbar');
@@ -185,9 +193,19 @@
       }
       return [...m.entries()].sort((x, y) => x[0] - y[0]).map(([ts, e]) => [ts, e[0] / e[1]]);
     })();
+    const kelSeries = (() => {
+      const m = new Map();
+      for (const s of kel) for (const r of (series[s.id] || [])) {
+        if (r[1] == null) continue;
+        const key = Math.round(r[0] / BIN) * BIN, e = m.get(key) || [0, 0];
+        e[0] += r[1]; e[1]++; m.set(key, e);
+      }
+      return [...m.entries()].sort((x, y) => x[0] - y[0]).map(([ts, e]) => [ts, e[0] / e[1]]);
+    })();
     const sets = [];
     if (out) sets.push({ label: 'Aussen', rows: (series[out.id] || []).filter(r => r[1] != null).map(r => [r[0], r[1]]), c: '--r0', dash: [5, 4] });
     if (inSeries.length) sets.push({ label: 'Im Haus', rows: inSeries, c: '--r1', dash: [] });
+    if (kelSeries.length) sets.push({ label: 'Keller', rows: kelSeries, c: '--r2', dash: [] });
     const xmax = now * 1000, xmin = xmax - 864e5;
     const datasets = sets.map(d => ({
       label: d.label, data: d.rows.map(r => ({ x: r[0] * 1000, y: r[1] })),
