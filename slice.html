@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>Slicer</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f0952a'/%3E%3Cg fill='%2307090f'%3E%3Crect x='22' y='64' width='56' height='9' rx='3'/%3E%3Crect x='28' y='51' width='44' height='9' rx='3'/%3E%3Crect x='34' y='38' width='32' height='9' rx='3'/%3E%3Crect x='40' y='25' width='20' height='9' rx='3'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/glass.css">
+<style>
+  :root {
+    --bg: #07090f; --card: #0d1220; --field: #131b2e; --text: #b8c8e0; --muted: #6b7f9e;
+    --line: #1c2a40; --accent: #f0952a; --link: #ffd166; --bad: #ff4d64; --ok: #5fd39a; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 16px 40px; }
+  h1 { font-size: 28px; margin: 0 0 2px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 920px) {
+    .layout { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+    .stage { position: sticky; top: 16px; height: calc(100vh - 128px) !important; max-height: 900px; }
+    .side { position: sticky; top: 16px; max-height: calc(100vh - 128px); overflow: auto; overscroll-behavior: contain; }
+  }
+
+  /* 3D-Ansicht */
+  .stage {
+    position: relative; height: min(58vh, 540px); border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--glass-line); background: radial-gradient(120% 90% at 50% 0%, #111a2c, #070a12 70%);
+  }
+  #view { position: absolute; inset: 0; touch-action: none; }
+  #view canvas { display: block; width: 100%; height: 100%; outline: none; }
+  #view.pick { cursor: crosshair; }
+  .drop {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+    color: var(--muted); pointer-events: none;
+  }
+  .drop .box { pointer-events: auto; max-width: 340px; }
+  .drop b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+  .drop .btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .stage.over { border-color: var(--accent); box-shadow: var(--glow); }
+  .hud { position: absolute; left: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+  .hud.t { top: 10px; }
+  .hud.b { bottom: 10px; align-items: center; }
+  .chip {
+    font: inherit; font-size: 13px; color: var(--text); padding: 7px 11px; border-radius: 999px; cursor: pointer;
+    background: rgba(13,18,32,.7); border: 1px solid var(--line); line-height: 1.2; white-space: nowrap;
+  }
+  .chip:disabled { opacity: .45; cursor: default; }
+  .chip.on, .chip[aria-pressed="true"] { color: #fff; }
+  .dims { margin-left: auto; font-size: 13px; color: var(--muted); padding: 7px 11px; border-radius: 999px; background: rgba(13,18,32,.7); font-variant-numeric: tabular-nums; }
+  .dims.bad { color: var(--bad); }
+  .layerbar { flex: 1 1 100%; display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 12px; background: rgba(13,18,32,.75); border: 1px solid var(--line); }
+  .layerbar input { flex: 1; }
+  .layerbar span { font-size: 13px; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+  .legend { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); padding: 0 4px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .hint { position: absolute; left: 50%; top: 54px; transform: translateX(-50%); font-size: 13px; padding: 6px 12px; border-radius: 999px; background: rgba(240,149,42,.18); color: var(--link); border: 1px solid rgba(240,149,42,.4); }
+
+  /* Einstellungen */
+  .side { display: grid; gap: 12px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 12px; }
+  .panel:hover { box-shadow: none !important; border-color: var(--glass-line) !important; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 12px; margin: 10px 0; }
+  .row > label, .row > .lbl { font-size: 14px; }
+  .row.full { grid-template-columns: 1fr; }
+  .val { color: var(--link); font-variant-numeric: tabular-nums; font-size: 14px; }
+  input[type=number], select {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--field); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; outline: none; width: 96px; text-align: right;
+  }
+  select { width: auto; min-width: 140px; text-align: left; appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+  input[type=number]:focus, input[type=number]:hover { border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .unit { color: var(--muted); font-size: 13px; margin-left: 4px; }
+  .pair { display: flex; align-items: center; gap: 4px; }
+  .pair input { width: 78px; }
+  .seg { display: flex; padding: 3px; gap: 3px; border-radius: 11px; background: var(--field); border: 1px solid var(--line); }
+  .seg button { flex: 1; white-space: nowrap; font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0; padding: 8px 6px; border-radius: 8px; cursor: pointer; line-height: 1.15; }
+  .seg button small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
+  .seg button[aria-pressed="true"] { color: #fff; }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .note.warn { color: var(--accent); }
+  .note.bad { color: var(--bad); }
+  .file { display: flex; align-items: center; gap: 10px; }
+  .file b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; margin: 10px 0; }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+  details > summary { cursor: pointer; list-style: none; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: " +"; }
+  details[open] > summary::after { content: " –"; }
+  .btn2 { font: inherit; font-size: 14px; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+  .btn2:hover { border-color: var(--accent); }
+
+  /* Aktionen und Resultat */
+  .actions { position: sticky; bottom: 0; z-index: 5; padding: 12px; border-radius: 14px; border: 1px solid var(--glass-line);
+    background: rgba(10,14,24,.88); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); }
+  .add { width: 100%; font: inherit; font-weight: 700; font-size: 16px; color: #1a0f02; background: var(--accent); border: 0; border-radius: 12px; padding: 13px 16px; cursor: pointer; }
+  .add:disabled { opacity: .45; cursor: default; filter: none; box-shadow: none !important; }
+  .add.ghost { background: none !important; background-image: none !important; color: var(--text); border: 1px solid var(--line); box-shadow: none !important; font-weight: 600; }
+  .add.ghost:hover { border-color: var(--accent); }
+  .bar { height: 6px; border-radius: 6px; background: var(--field); overflow: hidden; margin: 10px 0 4px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+  .status.bad { color: var(--bad); }
+  .btnrow { display: flex; gap: 8px; }
+  .btnrow .add { flex: 1; min-width: 0; white-space: nowrap; }
+  .res { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; transition: opacity .2s; }
+  .tile { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; min-width: 0; }
+  .tile small { display: block; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .tile b { display: block; font-size: 14.5px; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; max-width: 760px; }
+  footer p { margin: 0 0 8px; }
+  footer a { color: var(--muted); text-underline-offset: 3px; }
+  footer a:hover, footer a:focus-visible { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/slicer/three/three.module.min.js", "three/addons/": "/slicer/three/jsm/" } }
+</script>
+</head>
+<body>
+<div class="wrap">
+  <h1><span>Slice</span>r</h1>
+  <p class="sub">Für den Ender-3 V2 Neo · Druckraum 220 × 220 × 250 mm · alles läuft im Browser</p>
+
+  <div class="layout">
+    <section class="stage" id="stage">
+      <div id="view"></div>
+      <div class="drop" id="drop">
+        <div class="box">
+          <b>Modell hierher ziehen</b>
+          STL, OBJ oder 3MF – die Datei bleibt auf deinem Gerät.
+          <div class="btns">
+            <button class="chip" id="pickBtn" type="button">Datei auswählen</button>
+            <button class="chip" id="cubeBtn" type="button">Testwürfel</button>
+          </div>
+        </div>
+      </div>
+      <div class="hud t" id="hudTop" hidden>
+        <button class="chip" type="button" data-rot="x" data-tip="Um die X-Achse drehen (90°)">↻ X</button>
+        <button class="chip" type="button" data-rot="y" data-tip="Um die Y-Achse drehen (90°)">↻ Y</button>
+        <button class="chip" type="button" data-rot="z" data-tip="Um die senkrechte Achse drehen (90°)">↻ Z</button>
+        <button class="chip" type="button" id="flatBtn" data-tip="Legt das Modell automatisch auf seine grösste ebene Fläche">Flach legen</button>
+        <button class="chip" type="button" id="faceBtn" aria-pressed="false" data-tip="Danach eine Fläche des Modells antippen: Sie wird zur Unterseite">Fläche wählen</button>
+        <span class="dims" id="dims"></span>
+      </div>
+      <div class="hint" id="faceHint" hidden>Fläche antippen, die aufs Bett soll</div>
+      <div class="hud b" id="hudBot" hidden>
+        <div class="seg" id="viewSeg" style="background:rgba(13,18,32,.75)">
+          <button type="button" data-v="model" aria-pressed="true">Modell</button>
+          <button type="button" data-v="gcode" aria-pressed="false">G-Code</button>
+        </div>
+        <div class="layerbar" id="layerbar" hidden>
+          <input type="range" id="layer" min="0" max="0" value="0" aria-label="Schicht">
+          <span id="layerVal"></span>
+        </div>
+        <div class="legend" id="legend" hidden></div>
+      </div>
+    </section>
+
+    <aside class="side" id="side">
+      <div class="panel" id="modelPanel" hidden>
+        <h2>Modell</h2>
+        <div class="file"><b id="fname"></b><button class="btn2" type="button" id="swapBtn">Andere Datei</button></div>
+        <div class="row">
+          <label for="scale">Grösse</label>
+          <div class="pair"><input type="number" id="scale" min="1" max="2000" step="1" value="100"><span class="unit">%</span></div>
+        </div>
+        <div class="row">
+          <span class="lbl" data-tip="Verschiebung aus der Bettmitte">Position X / Y</span>
+          <div class="pair"><input type="number" id="offX" step="1" value="0" aria-label="Position X"><input type="number" id="offY" step="1" value="0" aria-label="Position Y"><span class="unit">mm</span></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn2" type="button" id="fitBtn">In Druckraum einpassen</button>
+          <button class="btn2" type="button" id="resetBtn">Zurücksetzen</button>
+        </div>
+        <p class="note bad" id="boundsNote" hidden></p>
+      </div>
+
+      <div class="panel">
+        <h2>Qualität</h2>
+        <div class="seg" id="qualSeg">
+          <button type="button" data-q="0.28">Entwurf<small>0,28 mm</small></button>
+          <button type="button" data-q="0.2">Standard<small>0,20 mm</small></button>
+          <button type="button" data-q="0.12">Fein<small>0,12 mm</small></button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Material</h2>
+        <div class="row">
+          <label for="mat">Filament</label>
+          <select id="mat">
+            <option value="PLA">PLA</option>
+            <option value="PETG">PETG</option>
+            <option value="TPU">TPU (flexibel)</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="lbl">Düse / Bett</span>
+          <div class="pair"><input type="number" id="temp" min="170" max="260" step="5" aria-label="Düsentemperatur"><input type="number" id="bed" min="0" max="100" step="5" aria-label="Betttemperatur"><span class="unit">°C</span></div>
+        </div>
+        <p class="note warn" id="matNote" hidden></p>
+      </div>
+
+      <div class="panel">
+        <h2>Stabilität</h2>
+        <div class="row"><label for="infill">Füllung</label><span class="val" id="infillVal"></span></div>
+        <input type="range" id="infill" min="0" max="100" step="5">
+        <div class="row">
+          <label for="pattern">Füllmuster</label>
+          <select id="pattern">
+            <option value="cubic">Würfel</option>
+            <option value="gyroid">Gyroid</option>
+            <option value="grid">Gitter</option>
+            <option value="triangles">Dreiecke</option>
+            <option value="lines">Linien</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="walls" data-tip="Anzahl Aussenlinien. 3 Wände = 1,2 mm">Wände</label>
+          <div class="pair"><input type="number" id="walls" min="1" max="8" step="1"><span class="unit">Linien</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Stützen &amp; Haftung</h2>
+        <div class="row full"><span class="lbl">Stützstrukturen</span></div>
+        <div class="seg" id="supSeg">
+          <button type="button" data-s="none">Keine</button>
+          <button type="button" data-s="buildplate" data-tip="Stützen nur dort, wo sie vom Bett aus wachsen können">Ab Bett</button>
+          <button type="button" data-s="everywhere" data-tip="Stützen auch auf dem Modell selbst">Überall</button>
+        </div>
+        <div class="row" id="angleRow"><label for="angle" data-tip="Überhänge, die steiler als dieser Winkel sind, bekommen Stützen">Überhang ab</label><div class="pair"><input type="number" id="angle" min="20" max="85" step="5"><span class="unit">°</span></div></div>
+        <div class="row full" style="margin-top:14px"><span class="lbl">Betthaftung</span></div>
+        <div class="seg" id="adhSeg">
+          <button type="button" data-a="skirt" data-tip="Linie um das Modell, damit das Filament sauber fliesst">Skirt</button>
+          <button type="button" data-a="brim" data-tip="Rand am Modell, gegen abstehende Ecken (Warping)">Brim</button>
+          <button type="button" data-a="none">Keine</button>
+        </div>
+        <div class="row" id="brimRow"><label for="brim">Brim-Breite</label><div class="pair"><input type="number" id="brim" min="2" max="20" step="1"><span class="unit">mm</span></div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Drucker</h2>
+        <div class="row"><label for="speed">Geschwindigkeit</label><span class="val" id="speedVal"></span></div>
+        <input type="range" id="speed" min="15" max="100" step="5">
+        <div class="row"><label for="fan">Bauteillüfter</label><span class="val" id="fanVal"></span></div>
+        <input type="range" id="fan" min="0" max="100" step="10">
+        <div class="row full" style="margin-top:14px"><span class="lbl" data-tip="Der V2 Neo hat einen CR Touch. Ein gespeichertes Mesh legst du einmal am Drucker an (Vorbereiten → Nivellieren).">Bettnivellierung (CR Touch)</span></div>
+        <div class="seg" id="lvlSeg">
+          <button type="button" data-l="load">Gespeichert<small>M420</small></button>
+          <button type="button" data-l="probe">Neu abtasten<small>G29</small></button>
+          <button type="button" data-l="off">Aus</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <details id="adv">
+          <summary>Erweitert</summary>
+          <div class="row"><label for="lh">Schichthöhe</label><div class="pair"><input type="number" id="lh" min="0.06" max="0.32" step="0.02"><span class="unit">mm</span></div></div>
+          <div class="row"><label for="lh0">Erste Schicht</label><div class="pair"><input type="number" id="lh0" min="0.1" max="0.32" step="0.02"><span class="unit">mm</span></div></div>
+          <div class="row"><label for="tb" data-tip="Anzahl geschlossener Schichten oben und unten">Deckel / Boden</label><div class="pair"><input type="number" id="top" min="0" max="20" step="1" aria-label="Deckel-Schichten"><input type="number" id="bottom" min="0" max="20" step="1" aria-label="Boden-Schichten"><span class="unit">Schichten</span></div></div>
+          <div class="row"><label for="retr" data-tip="Bowden-Extruder: 4–6 mm sind üblich">Rückzug</label><div class="pair"><input type="number" id="retr" min="0" max="10" step="0.5" aria-label="Rückzug Länge"><span class="unit">mm</span><input type="number" id="retrSpd" min="10" max="70" step="5" aria-label="Rückzug Tempo"><span class="unit">mm/s</span></div></div>
+          <div class="row">
+            <label for="seam" data-tip="Wo jede Schicht beginnt – dort entsteht eine feine Naht">Naht</label>
+            <select id="seam"><option value="sharpest_corner">Schärfste Ecke</option><option value="back">Hinten</option><option value="shortest">Kürzester Weg</option><option value="random">Zufällig</option></select>
+          </div>
+          <label class="toggle"><input type="checkbox" id="vase"> Vasenmodus (eine durchgehende Spirale, ohne Deckel)</label>
+          <div class="row"><label for="price">Filamentpreis</label><div class="pair"><input type="number" id="price" min="0" max="200" step="1"><span class="unit">CHF/kg</span></div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn2" type="button" id="defaultsBtn">Alles auf Standard</button></div>
+        </details>
+      </div>
+
+      <div class="actions">
+        <div class="btnrow">
+          <button class="add" type="button" id="sliceBtn" disabled>Slicen</button>
+          <button class="add" type="button" id="dlBtn" hidden>Herunterladen</button>
+        </div>
+        <div class="bar" id="bar" hidden><i id="barFill"></i></div>
+        <div class="status" id="status">Zuerst ein Modell laden.</div>
+        <div class="res" id="result" hidden>
+          <div class="tile"><small>Zeit</small><b id="rTime"></b></div>
+          <div class="tile"><small>Filament</small><b id="rLen"></b></div>
+          <div class="tile"><small>Gewicht</small><b id="rWeight"></b></div>
+          <div class="tile"><small>CHF</small><b id="rCost"></b></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>Das Slicen übernimmt CuraEngine, als WebAssembly direkt im Browser (<a href="https://github.com/Cloud-CNC/cura-wasm">cura-wasm</a>, AGPL-3.0; <a href="https://github.com/Ultimaker/CuraEngine">Quellcode CuraEngine</a>). Modelle werden nirgends hochgeladen. Einstellungen merkt sich dieses Gerät.</p>
+    <p>Nach dem Slicen im Tab «G-Code» Schicht für Schicht prüfen – vor allem Stützen und die erste Schicht. Die G-Code-Datei auf die microSD-Karte kopieren und am Drucker unter «Drucken» wählen. Druckzeit und Filament sind Schätzungen.</p>
+    <p><a href="/">→ <span style="color:var(--accent)">dom</span>buzz</a></p>
+  </footer>
+</div>
+
+<input type="file" id="fileIn" accept=".stl,.obj,.3mf,model/stl,model/3mf" hidden>
+<script src="/tip.js" defer></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+
+/* ---------- Drucker ---------- */
+const BED = { w: 220, d: 220, h: 250 };
+const LINE = 0.4;            // Düse 0,4 mm
+const FIL_D = 1.75;          // Filamentdurchmesser
+const MATS = {
+  PLA:  { temp: 200, bed: 60, fan: 100, speed: 50, retr: 5,   retrSpd: 45, dens: 1.24 },
+  PETG: { temp: 235, bed: 75, fan: 40,  speed: 40, retr: 5,   retrSpd: 40, dens: 1.27 },
+  TPU:  { temp: 225, bed: 50, fan: 60,  speed: 20, retr: 1.5, retrSpd: 25, dens: 1.21 }
+};
+const MAT_NOTES = {
+  PETG: 'PETG: Bett sauber halten, Glue Stick hilft bei PEI nicht immer. Erste Schicht nicht zu fest andrücken.',
+  TPU: 'TPU im Bowden-Extruder: sehr langsam drucken und wenig Rückzug, sonst staut sich das Filament.'
+};
+const DEFAULTS = {
+  lh: 0.2, lh0: 0.2, mat: 'PLA', ...pick(MATS.PLA), infill: 20, pattern: 'cubic', walls: 3,
+  top: 4, bottom: 3, support: 'none', angle: 55, adhesion: 'skirt', brim: 6, level: 'load',
+  seam: 'sharpest_corner', vase: false, price: 25
+};
+function pick(m) { return { temp: m.temp, bed: m.bed, fan: m.fan, speed: m.speed, retr: m.retr, retrSpd: m.retrSpd }; }
+
+/* ---------- Einstellungen merken ---------- */
+const KEY = 'dombuzz.slice.v1';
+let S = { ...DEFAULTS };
+try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 0) => n.toLocaleString('de-CH', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* ---------- Formular <-> Einstellungen ---------- */
+function layersFor(lh) { return { top: Math.max(3, Math.ceil(0.8 / lh - 1e-6)), bottom: Math.max(3, Math.ceil(0.6 / lh - 1e-6)) }; }
+function setSeg(id, attr, val) { $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset[attr] === String(val)))); }
+function render() {
+  const q = [0.28, 0.2, 0.12].find(x => Math.abs(x - S.lh) < 1e-6);
+  setSeg('qualSeg', 'q', q ?? 'x');
+  setSeg('supSeg', 's', S.support); setSeg('adhSeg', 'a', S.adhesion); setSeg('lvlSeg', 'l', S.level);
+  $('mat').value = S.mat; $('temp').value = S.temp; $('bed').value = S.bed;
+  $('infill').value = S.infill; $('infillVal').textContent = S.vase ? 'Vasenmodus' : S.infill + ' %';
+  $('pattern').value = S.pattern; $('walls').value = S.walls;
+  $('angle').value = S.angle; $('brim').value = S.brim;
+  $('angleRow').hidden = S.support === 'none'; $('brimRow').hidden = S.adhesion !== 'brim';
+  $('speed').value = S.speed; $('speedVal').textContent = S.speed + ' mm/s';
+  $('fan').value = S.fan; $('fanVal').textContent = S.fan + ' %';
+  $('lh').value = S.lh; $('lh0').value = S.lh0; $('top').value = S.top; $('bottom').value = S.bottom;
+  $('retr').value = S.retr; $('retrSpd').value = S.retrSpd; $('seam').value = S.seam; $('vase').checked = S.vase; $('price').value = S.price;
+  $('matNote').hidden = !MAT_NOTES[S.mat]; $('matNote').textContent = MAT_NOTES[S.mat] || '';
+  ['infill', 'pattern', 'walls', 'top'].forEach(id => $(id).disabled = S.vase);
+  checkBounds();
+}
+function changed() { save(); render(); staleResult(); }
+function setLH(lh) {
+  S.lh = lh; S.lh0 = lh >= 0.2 ? Math.min(0.28, lh) : 0.2;
+  Object.assign(S, layersFor(lh));
+}
+$('qualSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; setLH(+b.dataset.q); changed(); });
+$('supSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.support = b.dataset.s; changed(); });
+$('adhSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.adhesion = b.dataset.a; changed(); });
+$('lvlSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.level = b.dataset.l; changed(); });
+$('mat').addEventListener('change', () => { S.mat = $('mat').value; Object.assign(S, pick(MATS[S.mat])); changed(); });
+const num = (id, key, lo, hi) => $(id).addEventListener('change', () => {
+  let v = parseFloat(String($(id).value).replace(',', '.')); if (!isFinite(v)) v = S[key];
+  S[key] = Math.min(hi, Math.max(lo, v)); if (key === 'lh') Object.assign(S, layersFor(S.lh)); changed();
+});
+num('temp', 'temp', 150, 270); num('bed', 'bed', 0, 100); num('walls', 'walls', 1, 8); num('angle', 'angle', 20, 85);
+num('brim', 'brim', 2, 20); num('lh', 'lh', 0.06, 0.32); num('lh0', 'lh0', 0.1, 0.32); num('top', 'top', 0, 20);
+num('bottom', 'bottom', 0, 20); num('retr', 'retr', 0, 10); num('retrSpd', 'retrSpd', 10, 70); num('price', 'price', 0, 200);
+['infill', 'speed', 'fan'].forEach(k => $(k).addEventListener('input', () => { S[k] = +$(k).value; changed(); }));
+$('pattern').addEventListener('change', () => { S.pattern = $('pattern').value; changed(); });
+$('seam').addEventListener('change', () => { S.seam = $('seam').value; changed(); });
+$('vase').addEventListener('change', () => { S.vase = $('vase').checked; changed(); });
+$('defaultsBtn').addEventListener('click', () => { S = { ...DEFAULTS }; changed(); });
+
+/* ---------- 3D-Ansicht ---------- */
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 5000);
+camera.up.set(0, 0, 1);
+camera.position.set(0, -330, 250);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 30);
+controls.maxPolarAngle = Math.PI * 0.95;
+controls.update();
+scene.add(new THREE.HemisphereLight(0xcfdcff, 0x1a1410, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(-150, -220, 400); scene.add(sun);
+const sun2 = new THREE.DirectionalLight(0x88aaff, 0.6); sun2.position.set(200, 250, 120); scene.add(sun2);
+
+// Druckbett und Bauraum
+const bed = new THREE.Mesh(new THREE.PlaneGeometry(BED.w, BED.d), new THREE.MeshStandardMaterial({ color: 0x141c2c, roughness: 0.9 }));
+bed.position.z = -0.05; scene.add(bed);
+const grid = new THREE.GridHelper(BED.w, 22, 0x2a3a58, 0x1c2a40); grid.rotation.x = Math.PI / 2; scene.add(grid);
+const vol = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(BED.w, BED.d, BED.h)), new THREE.LineBasicMaterial({ color: 0x2a3a58, transparent: true, opacity: 0.55 }));
+vol.position.z = BED.h / 2; scene.add(vol);
+// Markierung vorne (Seite des Displays)
+const front = new THREE.Mesh(new THREE.PlaneGeometry(40, 3), new THREE.MeshBasicMaterial({ color: 0xf0952a }));
+front.position.set(0, -BED.d / 2 - 4, 0); scene.add(front);
+
+const modelMat = new THREE.MeshStandardMaterial({ color: 0xf0952a, roughness: 0.55, metalness: 0.05 });
+const badMat = new THREE.MeshStandardMaterial({ color: 0xff4d64, roughness: 0.55, metalness: 0.05 });
+let mesh = null, original = null, fileBase = 'modell';
+let gcodeGroup = null, lastGcode = null, lastSettingsKey = '';
+
+let needs = true;
+const redraw = () => { needs = true; };
+controls.addEventListener('change', redraw);
+(function loop() { if (needs) { renderer.render(scene, camera); needs = false; } requestAnimationFrame(loop); })();
+new ResizeObserver(() => {
+  const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); redraw();
+}).observe(view);
+
+/* ---------- Laden ---------- */
+const fileIn = $('fileIn');
+$('pickBtn').addEventListener('click', () => fileIn.click());
+$('swapBtn').addEventListener('click', () => fileIn.click());
+fileIn.addEventListener('change', () => { if (fileIn.files[0]) loadFile(fileIn.files[0]); fileIn.value = ''; });
+const stage = $('stage');
+['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); stage.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === 'drop' || e.target === document.documentElement) stage.classList.remove('over'); }));
+document.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) loadFile(f); });
+$('cubeBtn').addEventListener('click', () => {
+  const g = new THREE.BoxGeometry(20, 20, 20).toNonIndexed();
+  setModel(g, 'testwuerfel');
+});
+
+function status(t, bad) { $('status').textContent = t; $('status').classList.toggle('bad', !!bad); }
+
+async function loadFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  status('Lade ' + file.name + ' …');
+  try {
+    const buf = await file.arrayBuffer();
+    let geo;
+    if (ext === 'stl') geo = new STLLoader().parse(buf);
+    else if (ext === 'obj') {
+      geo = mergeObject(new OBJLoader().parse(new TextDecoder().decode(buf)));
+      geo.rotateX(Math.PI / 2); // OBJ ist meist Y-oben
+    } else if (ext === '3mf') geo = mergeObject(new ThreeMFLoader().parse(buf));
+    else throw new Error('Dateityp .' + ext + ' wird nicht unterstützt (STL, OBJ, 3MF).');
+    if (!geo || !geo.attributes.position || geo.attributes.position.count < 3) throw new Error('Keine Dreiecke gefunden.');
+    setModel(geo.index ? geo.toNonIndexed() : geo, file.name.replace(/\.[^.]+$/, ''));
+  } catch (err) {
+    console.error(err); status('Konnte die Datei nicht lesen: ' + (err.message || err), true);
+  }
+}
+function mergeObject(obj) {
+  obj.updateMatrixWorld(true);
+  const parts = [];
+  obj.traverse(o => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(o.matrixWorld);
+    parts.push(g.attributes.position.array);
+  });
+  const n = parts.reduce((a, p) => a + p.length, 0), arr = new Float32Array(n);
+  let o = 0; for (const p of parts) { arr.set(p, o); o += p.length; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3)); return g;
+}
+function normalize(g) {
+  g.computeBoundingBox(); const b = g.boundingBox;
+  g.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -b.min.z);
+  g.computeVertexNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+  return g;
+}
+function setModel(geo, name) {
+  geo.deleteAttribute('normal'); geo.deleteAttribute('uv');
+  original = normalize(geo.clone());
+  fileBase = (name || 'modell').replace(/[^\w\-äöüÄÖÜ]+/g, '_').slice(0, 40) || 'modell';
+  if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
+  mesh = new THREE.Mesh(normalize(geo), modelMat);
+  scene.add(mesh);
+  $('scale').value = 100; $('offX').value = 0; $('offY').value = 0;
+  $('fname').textContent = name || 'Modell';
+  $('drop').hidden = true; $('hudTop').hidden = false; $('hudBot').hidden = false; $('modelPanel').hidden = false;
+  // Zu grosse oder winzige Modelle (z. B. in cm oder m exportiert) automatisch einpassen
+  const s = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
+  if (s.x > BED.w || s.y > BED.d || s.z > BED.h) fitToBed();
+  else applyTransform();
+  frame();
+  clearGcode(); status('Bereit. Einstellungen prüfen und slicen.');
+  $('sliceBtn').disabled = false;
+  preloadEngine();
+}
+function frame() {
+  const r = Math.max(40, mesh.geometry.boundingSphere.radius * (+$('scale').value / 100));
+  controls.target.set(0, 0, Math.min(r, 80));
+  const dist = Math.max(260, r * 3.2);
+  camera.position.set(0, -dist * 0.82, dist * 0.62);
+  controls.update(); redraw();
+}
+
+/* ---------- Ausrichten, Grösse, Position ---------- */
+function scaleF() { return Math.max(0.01, (+$('scale').value || 100) / 100); }
+function applyTransform() {
+  if (!mesh) return;
+  const s = scaleF(); mesh.scale.set(s, s, s);
+  mesh.position.set(+$('offX').value || 0, +$('offY').value || 0, 0);
+  checkBounds(); staleResult(); redraw();
+}
+function rotateModel(m) {
+  setView('model');
+  mesh.geometry.applyMatrix4(m); normalize(mesh.geometry); applyTransform();
+}
+document.querySelectorAll('[data-rot]').forEach(b => b.addEventListener('click', () => {
+  const m = new THREE.Matrix4(), a = Math.PI / 2;
+  ({ x: () => m.makeRotationX(a), y: () => m.makeRotationY(a), z: () => m.makeRotationZ(a) })[b.dataset.rot]();
+  rotateModel(m);
+}));
+function rotNormalDown(n) {
+  const q = new THREE.Quaternion().setFromUnitVectors(n.clone().normalize(), new THREE.Vector3(0, 0, -1));
+  rotateModel(new THREE.Matrix4().makeRotationFromQuaternion(q));
+}
+// Grösste äussere ebene Fläche suchen und nach unten drehen
+$('flatBtn').addEventListener('click', () => {
+  const p = mesh.geometry.attributes.position.array, n = p.length / 9;
+  const groups = new Map(), A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    A.fromArray(p, i * 9); B.fromArray(p, i * 9 + 3); C.fromArray(p, i * 9 + 6);
+    N.subVectors(B, A).cross(C.clone().sub(A));
+    const area = N.length() / 2; if (area < 1e-6) continue;
+    N.normalize();
+    const key = Math.round(N.x * 50) + ',' + Math.round(N.y * 50) + ',' + Math.round(N.z * 50);
+    let g = groups.get(key); if (!g) groups.set(key, g = { n: new THREE.Vector3(), area: 0, tris: [] });
+    g.n.addScaledVector(N, area); g.area += area; g.tris.push(i);
+  }
+  const cand = [...groups.values()].sort((a, b) => b.area - a.area).slice(0, 24);
+  let best = null, bestArea = 0;
+  for (const g of cand) {
+    const dir = g.n.clone().normalize();
+    let max = -Infinity; for (let i = 0; i < p.length; i += 3) max = Math.max(max, dir.x * p[i] + dir.y * p[i + 1] + dir.z * p[i + 2]);
+    let a = 0;
+    for (const t of g.tris) {
+      const d = dir.x * p[t * 9] + dir.y * p[t * 9 + 1] + dir.z * p[t * 9 + 2];
+      if (max - d < 0.05) { A.fromArray(p, t * 9); B.fromArray(p, t * 9 + 3); C.fromArray(p, t * 9 + 6); a += N.subVectors(B, A).cross(C.clone().sub(A)).length() / 2; }
+    }
+    if (a > bestArea) { bestArea = a; best = dir; }
+  }
+  if (best) rotNormalDown(best);
+});
+// Fläche antippen
+let picking = false, downAt = null;
+$('faceBtn').addEventListener('click', () => { setView('model'); setPicking(!picking); });
+function setPicking(on) { picking = on; $('faceBtn').setAttribute('aria-pressed', String(on)); $('faceHint').hidden = !on; view.classList.toggle('pick', on); }
+view.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+view.addEventListener('pointerup', e => {
+  if (!picking || !mesh || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = ray.intersectObject(mesh)[0];
+  if (hit?.face) { rotNormalDown(hit.face.normal); setPicking(false); }
+});
+['scale', 'offX', 'offY'].forEach(id => $(id).addEventListener('input', () => { setView('model'); applyTransform(); }));
+$('scale').addEventListener('change', frame);
+$('fitBtn').addEventListener('click', () => { fitToBed(); frame(); });
+$('resetBtn').addEventListener('click', () => {
+  mesh.geometry.dispose(); mesh.geometry = normalize(original.clone());
+  $('scale').value = 100; $('offX').value = 0; $('offY').value = 0; applyTransform(); frame();
+});
+function fitToBed() {
+  const s = mesh.geometry.boundingBox.getSize(new THREE.Vector3()), m = margin();
+  const f = Math.min((BED.w - 2 * m) / s.x, (BED.d - 2 * m) / s.y, (BED.h - 1) / s.z);
+  $('scale').value = Math.max(1, Math.floor(f * 100 * 0.98));
+  $('offX').value = 0; $('offY').value = 0; applyTransform();
+}
+function margin() { return S.adhesion === 'brim' ? S.brim + 2 : S.adhesion === 'skirt' ? 6 : 2; }
+let outOfBounds = false;
+function checkBounds() {
+  if (!mesh) return;
+  const s = scaleF(), b = mesh.geometry.boundingBox, ox = +$('offX').value || 0, oy = +$('offY').value || 0, m = margin();
+  const x0 = b.min.x * s + ox, x1 = b.max.x * s + ox, y0 = b.min.y * s + oy, y1 = b.max.y * s + oy, z = b.max.z * s;
+  const hx = BED.w / 2 - m, hy = BED.d / 2 - m;
+  const issues = [];
+  if (x0 < -hx || x1 > hx || y0 < -hy || y1 > hy) issues.push('ragt über den Bettrand' + (m > 2 ? ' (inkl. ' + (S.adhesion === 'brim' ? 'Brim' : 'Skirt') + ')' : ''));
+  if (z > BED.h) issues.push('ist höher als ' + BED.h + ' mm');
+  outOfBounds = issues.length > 0;
+  mesh.material = outOfBounds ? badMat : modelMat;
+  $('dims').textContent = fmt(x1 - x0, 1) + ' × ' + fmt(y1 - y0, 1) + ' × ' + fmt(z, 1) + ' mm';
+  $('dims').classList.toggle('bad', outOfBounds);
+  $('boundsNote').hidden = !outOfBounds;
+  $('boundsNote').textContent = 'Das Modell ' + issues.join(' und ') + '. Verkleinern oder «In Druckraum einpassen».';
+  $('sliceBtn').disabled = !mesh || outOfBounds || busy;
+  redraw();
+}
+
+/* ---------- STL für die Engine ---------- */
+function buildSTL() {
+  const p = mesh.geometry.attributes.position.array, s = scaleF(), ox = mesh.position.x, oy = mesh.position.y;
+  const n = p.length / 9, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf);
+  dv.setUint32(80, n, true);
+  let o = 84;
+  for (let i = 0; i < n; i++) {
+    o += 12; // Normale 0 – die Engine rechnet selbst
+    for (let k = 0; k < 3; k++) {
+      const j = i * 9 + k * 3;
+      dv.setFloat32(o, p[j] * s + ox, true); dv.setFloat32(o + 4, p[j + 1] * s + oy, true); dv.setFloat32(o + 8, p[j + 2] * s, true); o += 12;
+    }
+    o += 2;
+  }
+  return buf;
+}
+
+/* ---------- Engine-Einstellungen ---------- */
+const PATTERN_F = { grid: 2, cubic: 3, triangles: 3, gyroid: 1, lines: 1 };
+function overrides() {
+  const v = S.speed, lh = S.lh, vase = S.vase;
+  const dens = vase ? 0 : S.infill;
+  const o = {
+    machine_width: BED.w, machine_depth: BED.d, machine_height: BED.h,
+    layer_height: lh, layer_height_0: S.lh0,
+    wall_line_count: vase ? 1 : S.walls,
+    top_layers: vase ? 0 : S.top, bottom_layers: S.bottom,
+    infill_sparse_density: dens, infill_pattern: S.pattern,
+    infill_line_distance: dens > 0 ? +(LINE * 100 / dens * PATTERN_F[S.pattern]).toFixed(3) : 0,
+    material_print_temperature: S.temp, material_print_temperature_layer_0: S.temp + 5,
+    material_initial_print_temperature: S.temp, material_final_print_temperature: S.temp,
+    material_bed_temperature: S.bed, material_bed_temperature_layer_0: S.bed,
+    speed_print: v, speed_infill: v, speed_wall: v / 2, speed_wall_0: v / 2, speed_wall_x: v,
+    speed_topbottom: v / 2, speed_roofing: v / 2, speed_support: v, speed_support_interface: v / 2,
+    speed_travel: 150, speed_layer_0: Math.min(20, v), speed_print_layer_0: Math.min(20, v), speed_travel_layer_0: 100, skirt_brim_speed: Math.min(20, v),
+    retraction_enable: S.retr > 0, retraction_amount: S.retr, retraction_speed: S.retrSpd,
+    retraction_retract_speed: S.retrSpd, retraction_prime_speed: S.retrSpd, retraction_combing: 'noskin',
+    cool_fan_enabled: S.fan > 0, cool_fan_speed: S.fan, cool_fan_speed_min: S.fan, cool_fan_speed_max: S.fan,
+    cool_fan_speed_0: 0, cool_fan_full_layer: 3,
+    adhesion_type: S.adhesion, skirt_line_count: 2, skirt_gap: 4,
+    brim_width: S.brim, brim_line_count: Math.ceil(S.brim / LINE),
+    support_enable: !vase && S.support !== 'none', support_type: S.support === 'everywhere' ? 'everywhere' : 'buildplate',
+    support_angle: S.angle, support_infill_rate: 15, support_line_distance: +(LINE * 100 / 15).toFixed(3),
+    support_z_distance: lh, support_top_distance: lh, support_bottom_distance: lh,
+    z_seam_type: S.seam, magic_spiralize: vase
+  };
+  return Object.entries(o).map(([key, value]) => ({ scope: null, key, value: typeof value === 'boolean' ? String(value) : value }));
+}
+function startGcode() {
+  const lvl = { load: 'M420 S1 Z10 ; gespeichertes Bettnetz laden', probe: 'G29 ; Bett mit CR Touch abtasten', off: '; ohne Bettnivellierung' }[S.level];
+  return [
+    '; Ender-3 V2 Neo – Start (dom.dombuzz.ch/slice)',
+    'G92 E0', 'G28 ; Achsen referenzieren', lvl,
+    'G1 Z2.0 F3000', 'G1 X0.1 Y20 Z0.3 F5000.0', 'G1 X0.1 Y200.0 Z0.3 F1500.0 E15 ; Reinigungslinie',
+    'G1 X0.4 Y200.0 Z0.3 F5000.0', 'G1 X0.4 Y20 Z0.3 F1500.0 E30', 'G92 E0', 'G1 Z2.0 F3000', 'G1 X5 Y20 Z0.3 F5000.0'
+  ].join('\n');
+}
+const END_GCODE = [
+  'G91', 'G1 E-2 F2700', 'G1 E-2 Z0.2 F2400', 'G1 X5 Y5 F3000', 'G1 Z10', 'G90',
+  'G1 X0 Y200 F3000 ; Druck nach vorne', 'M106 S0', 'M104 S0', 'M140 S0', 'M84 X Y E'
+].join('\n');
+
+/* ---------- Slicen ---------- */
+let enginePromise = null, defPromise = null, busy = false, current = null, runId = 0;
+function preloadEngine() {
+  enginePromise ||= import('/slicer/cura-wasm.js');
+  defPromise ||= fetch('/slicer/ender3v2neo.def.json').then(r => { if (!r.ok) throw new Error('Druckerprofil fehlt'); return r.json(); });
+}
+function settingsKey() { return JSON.stringify([S, $('scale').value, $('offX').value, $('offY').value, mesh?.geometry?.uuid, mesh?.geometry?.attributes?.position?.version]); }
+function sliceLabel() {
+  const fresh = lastGcode && settingsKey() === lastSettingsKey;
+  $('sliceBtn').textContent = lastGcode ? 'Neu slicen' : 'Slicen';
+  $('sliceBtn').classList.toggle('ghost', !!fresh);
+}
+function staleResult() {
+  if (!lastGcode || busy) return;
+  const stale = settingsKey() !== lastSettingsKey;
+  $('result').style.opacity = stale ? .45 : 1;
+  if (stale) status('Einstellungen geändert – neu slicen.');
+  sliceLabel();
+}
+$('sliceBtn').addEventListener('click', () => busy ? cancel() : slice());
+async function slice() {
+  if (!mesh || outOfBounds) return;
+  busy = true; setPicking(false); const run = ++runId;
+  $('sliceBtn').textContent = 'Abbrechen'; $('sliceBtn').classList.add('ghost');
+  $('bar').hidden = false; $('barFill').style.width = '2%'; $('result').hidden = true; $('dlBtn').hidden = true;
+  status('Engine wird geladen …');
+  const key = settingsKey();
+  const t0 = performance.now();
+  try {
+    preloadEngine();
+    const [{ CuraWASM }, base] = await Promise.all([enginePromise, defPromise]);
+    const def = structuredClone(base);
+    def.printer.overrides.machine_start_gcode = { default_value: startGcode() };
+    def.printer.overrides.machine_end_gcode = { default_value: END_GCODE };
+    const slicer = new CuraWASM({ definition: def, overrides: overrides(), transfer: true, verbose: false });
+    current = slicer;
+    slicer.on('progress', p => { $('barFill').style.width = Math.max(3, p) + '%'; status('Slicen … ' + p + ' %'); });
+    status('Slicen …');
+    const { gcode, metadata } = await slicer.slice(buildSTL(), 'stl');
+    if (run !== runId) return; // abgebrochen
+    current = null; slicer.destroy().catch(() => {});
+    let text = new TextDecoder().decode(gcode);
+    const parsed = parseGcode(text);
+    if (!parsed.layers.length) throw new Error('Die Engine hat keine Schichten erzeugt. Liegt das Modell auf dem Bett?');
+    text = fixHeader(text, metadata, parsed);
+    lastGcode = text; lastSettingsKey = key;
+    showResult(metadata, parsed);
+    showGcode(parsed);
+    status('Fertig in ' + fmt((performance.now() - t0) / 1000, 1) + ' s · ' + parsed.layers.length + ' Schichten');
+  } catch (err) {
+    if (run !== runId) return;
+    console.error(err); status('Slicen fehlgeschlagen: ' + (err.message || err), true);
+    current = null;
+  } finally {
+    if (run !== runId) return;
+    busy = false; $('bar').hidden = true; sliceLabel(); checkBounds();
+  }
+}
+function cancel() {
+  const s = current; current = null; busy = false; runId++;
+  if (s) s.destroy().catch(() => {});
+  $('bar').hidden = true; if (lastGcode) { $('result').hidden = false; $('dlBtn').hidden = false; }
+  sliceLabel(); status('Abgebrochen.'); checkBounds();
+}
+function filamentStats(meta) {
+  const vol = meta?.filamentUsage || 0; // mm³
+  const len = vol / (Math.PI * (FIL_D / 2) ** 2) / 1000; // m
+  const g = vol / 1000 * MATS[S.mat].dens;
+  return { len, g };
+}
+function fixHeader(text, meta, parsed) {
+  const { len } = filamentStats(meta), b = parsed.bounds;
+  const info = [
+    '; Slicer dom.dombuzz.ch/slice – Ender-3 V2 Neo',
+    `; ${S.mat} ${S.temp}/${S.bed} °C · Schicht ${S.lh} mm · Füllung ${S.vase ? 'Vase' : S.infill + ' % ' + S.pattern} · Wände ${S.walls} · Stützen ${S.support} · ${S.adhesion} · ${S.speed} mm/s`
+  ].join('\n');
+  return text
+    .replace(/^;TIME:.*$/m, ';TIME:' + Math.round(meta?.printTime || 0))
+    .replace(/^;Filament used:.*$/m, ';Filament used: ' + len.toFixed(5) + 'm')
+    .replace(/^;MINX:.*$/m, ';MINX:' + b.minx.toFixed(3)).replace(/^;MINY:.*$/m, ';MINY:' + b.miny.toFixed(3)).replace(/^;MINZ:.*$/m, ';MINZ:' + b.minz.toFixed(3))
+    .replace(/^;MAXX:.*$/m, ';MAXX:' + b.maxx.toFixed(3)).replace(/^;MAXY:.*$/m, ';MAXY:' + b.maxy.toFixed(3)).replace(/^;MAXZ:.*$/m, ';MAXZ:' + b.maxz.toFixed(3))
+    .replace(/^(;Generated with .*)$/m, '$1\n' + info);
+}
+function showResult(meta, parsed) {
+  const t = Math.round(meta?.printTime || 0), h = Math.floor(t / 3600), m = Math.round((t % 3600) / 60);
+  const { len, g } = filamentStats(meta);
+  $('rTime').textContent = h ? `${h} h ${m} min` : `${m} min`;
+  $('rLen').textContent = fmt(len, 2) + ' m';
+  $('rWeight').textContent = fmt(g, g < 10 ? 1 : 0) + ' g';
+  $('rCost').textContent = fmt(g / 1000 * S.price, 2);
+  $('result').hidden = false; $('result').style.opacity = 1; $('dlBtn').hidden = false;
+}
+$('dlBtn').addEventListener('click', () => {
+  if (!lastGcode) return;
+  const name = `${fileBase}_${S.mat}_${String(S.lh).replace('.', '')}.gcode`;
+  const url = URL.createObjectURL(new Blob([lastGcode], { type: 'text/x.gcode' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+});
+
+/* ---------- G-Code-Vorschau ---------- */
+const TYPES = {
+  'WALL-OUTER': ['Aussenwand', 0xf0952a], 'WALL-INNER': ['Innenwand', 0xffd166], 'SKIN': ['Deckel/Boden', 0x5fd39a],
+  'FILL': ['Füllung', 0x3d95f0], 'SUPPORT': ['Stützen', 0xb48cff], 'SUPPORT-INTERFACE': ['Stützen', 0xb48cff], 'SKIRT': ['Skirt/Brim', 0x8fa3c4]
+};
+function parseGcode(text) {
+  const layers = []; let cur = null, type = 'SKIRT', x = 0, y = 0, z = 0, e = 0, relE = false;
+  const b = { minx: 1e9, miny: 1e9, minz: 1e9, maxx: -1e9, maxy: -1e9, maxz: -1e9 };
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const c0 = l.charCodeAt(0);
+    if (c0 === 59) { // ;
+      if (l.startsWith(';LAYER:')) { cur = { z, pos: [], col: [] }; layers.push(cur); }
+      else if (l.startsWith(';TYPE:')) type = l.slice(6).trim();
+      continue;
+    }
+    if (c0 === 77) { if (l.startsWith('M83')) relE = true; else if (l.startsWith('M82')) relE = false; continue; }
+    if (c0 !== 71) continue; // G
+    const g = l.startsWith('G1 ') || l.startsWith('G0 ') ? 1 : l.startsWith('G92') ? 92 : 0;
+    if (!g) continue;
+    let nx = x, ny = y, nz = z, ne = e, hasE = false;
+    const parts = l.split(';')[0].split(' ');
+    for (let k = 1; k < parts.length; k++) {
+      const p = parts[k], ch = p[0], v = parseFloat(p.slice(1));
+      if (ch === 'X') nx = v; else if (ch === 'Y') ny = v; else if (ch === 'Z') nz = v; else if (ch === 'E') { ne = relE && g === 1 ? e + v : v; hasE = true; }
+    }
+    if (g === 92) { if (hasE) e = ne; continue; }
+    if (cur && hasE && ne > e + 1e-5 && (nx !== x || ny !== y)) {
+      cur.pos.push(x - BED.w / 2, y - BED.d / 2, nz, nx - BED.w / 2, ny - BED.d / 2, nz);
+      const c = (TYPES[type] || TYPES.SKIRT)[1];
+      cur.col.push(c, c);
+      if (nx < b.minx) b.minx = nx; if (nx > b.maxx) b.maxx = nx; if (x < b.minx) b.minx = x; if (x > b.maxx) b.maxx = x;
+      if (ny < b.miny) b.miny = ny; if (ny > b.maxy) b.maxy = ny; if (y < b.miny) b.miny = y; if (y > b.maxy) b.maxy = y;
+      if (nz < b.minz) b.minz = nz; if (nz > b.maxz) b.maxz = nz;
+      cur.z = nz;
+    }
+    x = nx; y = ny; z = nz; if (hasE) e = ne;
+  }
+  return { layers: layers.filter(L => L.pos.length), bounds: b };
+}
+function clearGcode() {
+  if (gcodeGroup) { gcodeGroup.traverse(o => { o.geometry?.dispose(); }); scene.remove(gcodeGroup); gcodeGroup = null; }
+  lastGcode = null; $('result').hidden = true; $('dlBtn').hidden = true; sliceLabel(); setView('model');
+  $('viewSeg').querySelector('[data-v=gcode]').disabled = true;
+}
+const lineMat = new THREE.LineBasicMaterial({ vertexColors: true });
+const lineMatDim = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35 });
+function showGcode(parsed) {
+  if (gcodeGroup) { gcodeGroup.traverse(o => o.geometry?.dispose()); scene.remove(gcodeGroup); }
+  gcodeGroup = new THREE.Group();
+  const col = new THREE.Color();
+  for (const L of parsed.layers) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(L.pos, 3));
+    const c = new Float32Array(L.col.length * 3);
+    L.col.forEach((hex, i) => { col.setHex(hex); c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; });
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    const ls = new THREE.LineSegments(g, lineMat); ls.userData.z = L.z;
+    gcodeGroup.add(ls);
+  }
+  scene.add(gcodeGroup);
+  const used = new Set(); parsed.layers.forEach(L => L.col.forEach(c => used.add(c)));
+  const seen = new Set();
+  $('legend').innerHTML = Object.values(TYPES).filter(([n, c]) => used.has(c) && !seen.has(n) && seen.add(n))
+    .map(([n, c]) => `<span><i style="background:#${c.toString(16).padStart(6, '0')}"></i>${n}</span>`).join('');
+  const r = $('layer'); r.max = parsed.layers.length - 1; r.value = r.max;
+  $('viewSeg').querySelector('[data-v=gcode]').disabled = false;
+  setView('gcode');
+}
+function showLayer() {
+  if (!gcodeGroup) return;
+  const n = +$('layer').value, kids = gcodeGroup.children;
+  kids.forEach((k, i) => { k.visible = i <= n; k.material = i === n || n === kids.length - 1 ? lineMat : lineMatDim; });
+  $('layerVal').textContent = `${n + 1} / ${kids.length} · ${fmt(kids[n]?.userData.z || 0, 2)} mm`;
+  redraw();
+}
+$('layer').addEventListener('input', showLayer);
+function setView(v) {
+  const g = v === 'gcode' && gcodeGroup;
+  setSeg('viewSeg', 'v', g ? 'gcode' : 'model');
+  if (mesh) mesh.visible = !g;
+  if (gcodeGroup) gcodeGroup.visible = !!g;
+  $('layerbar').hidden = !g; $('legend').hidden = !g;
+  if (g) { setPicking(false); showLayer(); }
+  redraw();
+}
+$('viewSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) setView(b.dataset.v); });
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, select, textarea') || !gcodeGroup || !$('layerbar').offsetParent) return;
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { const r = $('layer'); r.value = +r.value + (e.key === 'ArrowUp' ? 1 : -1); showLayer(); e.preventDefault(); }
+});
+
+render();
+</script>
+</body>
+</html>
