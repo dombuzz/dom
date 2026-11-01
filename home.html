@@ -167,7 +167,7 @@
     const t = (name, c, v, sub, stale, tip) => `<div class="tile${stale ? ' stale' : ''}" style="--rc:var(${c})"${tip ? ` data-tip="${esc(tip)}" tabindex="0"` : ''}><div class="k"><span class="sw" style="background:var(${c})"></span>${name}</div>
       <div class="v">${fmt(v)}${v != null ? '<small>°C</small>' : ''}</div><div class="s">${esc(sub)}</div></div>`;
     const tiles = [];
-    if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out), 'Aussentemperatur, vorerst gemessen am Fühler der Wärmepumpe. Sobald ein eigener Aussensensor läuft, gilt dessen Wert.'));
+    if (out) tiles.push(t('Aussen', '--r0', out.last.temp, ago(Math.max(0, now - out.last.ts)), isStale(out), out.source === 'wp' ? 'Aussentemperatur, zurzeit gemessen am Fühler der Wärmepumpe, weil der Aussensensor nicht meldet.' : 'Aussentemperatur, gemessen vom Aussensensor. Meldet er nicht, gilt ersatzweise der Fühler der Wärmepumpe.'));
     if (ins.length) {
       const sub = [inH != null ? `${fmt(inH, 0)} % rF` : null, live.length ? ago(Math.max(0, now - inTs)) : 'meldet nicht'].filter(Boolean).join(' · ');
       tiles.push(t('Im Haus', '--r1', inT, sub, !live.length, 'Mittelwert der Temperatur aller Wohnräume, die gerade melden. Kellerräume und Sensoren ohne aktuelle Meldung werden nicht mitgerechnet.'));
