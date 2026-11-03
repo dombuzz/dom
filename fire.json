@@ -1,13 +1,13 @@
 {
- "checked": "2026-11-02T18:14:17Z",
+ "checked": "2026-11-03T01:13:33Z",
  "melder": [
   {
    "name": "Dach",
    "typ": "XS01-WX",
    "online": true,
-   "zuletzt": "2026-11-02T08:00:00Z",
+   "zuletzt": "2026-11-02T20:40:59Z",
    "batterie": 3,
-   "wlan": -46,
+   "wlan": -45,
    "alarm": null,
    "lebensende": null
   },
@@ -15,9 +15,9 @@
    "name": "Gang",
    "typ": "XS01-WX",
    "online": true,
-   "zuletzt": "2026-11-02T09:10:17Z",
+   "zuletzt": "2026-11-02T21:28:01Z",
    "batterie": 3,
-   "wlan": -44,
+   "wlan": -45,
    "alarm": null,
    "lebensende": null
   },
